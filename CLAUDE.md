@@ -4,7 +4,17 @@
 `dailynews18.com`. Front page recomposed continuously from ~35 public RSS feeds; every card
 opens its own small article page. Sections run **US → International → World → Weather → Recipes**.
 
-**Status:** IN BUILD (started 2026-08-19). Nothing deployed yet, nothing bought, $0 spent.
+**Status: v1.0 BUILT, TESTED, DELIVERED 2026-08-19.** 324 tests pass. Nothing bought, $0 spent.
+📦 **ZIP:** github.com/oliveroliver10816/theeveningbrief/releases/download/v1.0/theeveningbrief.zip
+(169,736 bytes, md5 `bec750c8937a7b400f4a9e8e9c3d1e40`, download re-verified). Source repo
+oliveroliver10816/theeveningbrief. 12,134 lines of PHP across 12 modules + router + front controller.
+
+**Proven, not asserted** — every route curled on a CLEAN UNZIP with an empty database:
+all 200s, 404 only for a bad path. First request self-seeds (7.2s, fetches 14 feeds across all
+five front-page sections), then **0.18s**. 34/34 feeds green, 756 articles. Weather live from
+open-meteo + NWS. Article pages carry NewsArticle JSON-LD with `isBasedOn`; a wrong slug 301s to
+the canonical URL. Front page: 1 eager hero + 19 lazy images, every one with width/height/alt/
+referrerpolicy/onerror. Finance count on the front page = 0-2, hero and first two blocks always 0.
 
 ## Where the reference site's feed comes from — answered
 
@@ -88,3 +98,38 @@ own header comment explaining why it is empty of redirects.
 
 Canonical-domain enforcement, when wanted, belongs at the host/CDN level **after** the site is
 confirmed working — never in this file.
+
+
+## ⚠ What went wrong on the way — worth not repeating
+
+1. **The ultracode workflow STALLED SILENTLY.** All 7 module agents and all 7 verifiers finished
+   (324 tests green), then the Integrate agent never produced a file. The last agent transcript
+   was written at 12:52 and nothing happened for 83 minutes; there was no error, no notification,
+   nothing in `journal.jsonl` but 25 entries of build/harden results. **Poll the journal's mtime,
+   don't wait on the completion notification** — a stalled workflow looks exactly like a slow one.
+   Fixed by killing it and writing `index.php`, `app/Router.php`, `app/bootstrap.php`,
+   `install.php` and `README.txt` by hand in ~20 minutes.
+2. **`Db::recentArticles` takes `section` (singular, accepts an array) and `window_hours`** — I
+   wired the Router with `sections` and `since_days`. Unknown option keys are silently ignored,
+   so every section page served the SAME rows and it looked plausible. Caught only by comparing
+   headlines across `/section/us`, `/section/world`, `/section/recipes`.
+3. **`Recipes::pageModel()['items']` is ALREADY lead + grid.** My Router prepended `lead` again,
+   so the lead recipe rendered twice. Caught by a unique-vs-total count on the rendered page.
+4. ⭐ **`Paths::hasRewrite()` probes over loopback HTTP, and an INCONCLUSIVE probe was never
+   cached** — so it re-probed on every single request, costing a 3s timeout per page view on any
+   host that cannot answer its own request. Now a null probe writes a negative with `NEGATIVE_TTL`.
+   Safe because `evidenceFromRequest()` is consulted *before* the negative cache, so a real
+   rewrite still upgrades it to true. **This was a genuine production risk, not a harness artefact.**
+5. ⚠ **But the subdirectory 404s WERE a harness artefact** — my own dev-server router made
+   `SCRIPT_FILENAME` point at the router script, outside the app root, which Apache never does.
+   Resisted "fixing" `Paths.php` for a phantom bug; emulating Apache's `SCRIPT_NAME` made all
+   subdirectory routes 200.
+6. ⚠ **My own `install.php` reachability probe used HEAD and reported NPR as blocked.** NPR
+   answers HEAD with 403 and GET with 200. A false "your host blocks outbound HTTP" would have
+   sent Bob to his host for nothing. Now a Range-capped GET with the ingester's own UA, and
+   401/403/429 is reported as *reachable but declining us* — the same lesson as `tombstone.py`.
+7. ⚠ **Seeding tier-1 only left Recipes and Weather empty on a fresh upload** — those publish
+   rarely and sit in slower tiers, and an empty section is the first thing anyone notices. The
+   first-run seed now takes the best few feeds *per front-page section*.
+8. ⚠ **A single `Ingest::run` is capped by `ingest.batch` (14)**, so one press of install.php's
+   "Fetch stories now" could never cover a 34-feed roster. It now loops to a 45s budget.
