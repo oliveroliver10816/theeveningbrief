@@ -4,7 +4,15 @@
 `dailynews18.com`. Front page recomposed continuously from ~35 public RSS feeds; every card
 opens its own small article page. Sections run **US → International → World → Weather → Recipes**.
 
-**Status: v1.0 BUILT, TESTED, DELIVERED 2026-08-19.** 324 tests pass. Nothing bought, $0 spent.
+**⭐ LIVE 2026-08-19: https://the-evening-brief-4ac580dc21ce.herokuapp.com** — MySQL-backed,
+fetching every 10 minutes, 34/34 feeds green, 0 parked. Heroku app `the-evening-brief` on
+**emilyparker19814014@gmail.com** (one of 6 Heroku accounts in Gitku's `deploy_bot_us` D1).
+DB = **JawsDB Kitefin, free**. Schedule = **CF Worker `evening-brief-scheduler`, cron `*/10`**
+(Osanix acct) — Heroku Scheduler was rejected because it can ONLY be configured by clicking its
+dashboard, and Bob does not run commands or click panels. Deployment facts + ingest token:
+`/root/.config/theeveningbrief/deployment.json` (600).
+
+**Status: v1.3 BUILT, TESTED, DEPLOYED 2026-08-19.** 324 tests pass. Nothing bought, $0 spent.
 📦 **ZIP:** github.com/oliveroliver10816/theeveningbrief/releases/download/v1.0/theeveningbrief.zip
 (169,736 bytes, md5 `bec750c8937a7b400f4a9e8e9c3d1e40`, download re-verified). Source repo
 oliveroliver10816/theeveningbrief. 12,134 lines of PHP across 12 modules + router + front controller.
@@ -133,3 +141,48 @@ confirmed working — never in this file.
    first-run seed now takes the best few feeds *per front-page section*.
 8. ⚠ **A single `Ingest::run` is capped by `ingest.batch` (14)**, so one press of install.php's
    "Fetch stories now" could never cover a 34-feed roster. It now loops to a 45s budget.
+
+
+## Deploying this to Heroku — everything that bit us
+
+⚠ **Heroku wipes the dyno disk on every restart.** SQLite there loses every story about once a
+day. Bob's words: *"I don't want it to be wiped out on each restart. FIX IT!"* Fix = read the DB
+from the environment. `config.php` now picks up `JAWSDB_URL` / `JAWSDB_MARIA_URL` /
+`CLEARDB_DATABASE_URL` / `DATABASE_URL` / `MYSQL_URL` and discrete `MYSQL_*`, and switches to
+MySQL with no edit. **Postgres is explicitly ignored-and-logged**, not half-supported.
+
+⚠ **The MySQL driver had NEVER been executed** — `tests/test_db.php` skipped itself when no server
+was present, so "324 tests pass" said nothing about it. Installed MariaDB locally and ran the whole
+app against it before trusting it: migrate idempotent, re-ingest skipped 208/208, section filter and
+injection probe clean, compose+render identical. **Then wiped the entire app directory, redeployed
+fresh, and confirmed all 378 articles survived.** A skipped test is not a passing test.
+
+⚠ **`ext-pdo_sqlite` and `ext-mbstring` are NOT in Heroku's default PHP build** → "could not find
+driver" → 503 on the front page. Must be declared in `composer.json`, and once `require` exists
+Heroku demands a matching `composer.lock`.
+
+⚠ **The upload path silently dropped `.htaccess`** (a dot-file), so every pretty URL 404'd at Apache
+before PHP saw it. `apache.conf` is the same ruleset under a name nothing strips, wired via
+`Procfile: heroku-php-apache2 -C apache.conf /`. ⚠ **`heroku-php-nginx` ignores .htaccess entirely** —
+picking it would 404 the whole site.
+
+⚠ **The cPanel ZIP has a wrapper folder that hides composer.json/Procfile from the buildpack.**
+The Heroku package is flat. Two packages, one packager: `scripts/build-zip.sh`.
+
+⚠ **`config.php` is a `require`d expression the test suite loads more than once** — a bare
+`function` in it fatals on redeclare and cost 4 tests. Guarded with `function_exists`.
+
+⚠ **Heroku Scheduler has no API** — jobs can only be created in its web dashboard. That is why the
+timetable lives in a Cloudflare Worker cron instead.
+
+⚠ **`/admin/ingest` did not exist** — SPEC §6 listed it, the built Router never had it. Added,
+guarded by `ingest.token` (also readable from `INGEST_TOKEN` env). **Closed by default**: no token
+configured returns 503, wrong token 403, compared with `hash_equals`. An open endpoint that fires 34
+outbound requests is a free amplifier.
+
+⚠ `error code: 1042` from `workers.dev` is Cloudflare throttling **our datacenter IP**, not a broken
+Worker — the scheduled trigger runs inside Cloudflare and is unaffected. Verified by watching
+`/healthz` `last_run` move on its own: **19:30:54 UTC, 14 feeds ok / 0 failed, 130 new, 257 deduped.**
+
+⚠ **Six Heroku accounts are stored in Gitku** (`deploy_bot_us` + `deploy_bot_apac` D1). The app name
+is `the-evening-brief`; the hash in the URL is not part of it — matching on the URL found nothing.

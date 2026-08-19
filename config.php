@@ -200,7 +200,10 @@ return [
         // from a browser or an uptime monitor:
         //     https://yourdomain.com/index.php?__ingest=YOURWORD
         // Empty means that URL is switched off, which is the safe default.
-        'token' => '',
+        // A scheduler calls /admin/ingest?token=... on a timetable. Set it here,
+        // or leave it blank and set an INGEST_TOKEN environment variable — which
+        // is how platform hosts do it. Blank in both places CLOSES the route.
+        'token' => (string) (getenv('INGEST_TOKEN') ?: ''),
 
         // Seconds to wait on any one publisher before giving up on it.
         // A slow feed must never hold up the others.

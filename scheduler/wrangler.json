@@ -1,0 +1,8 @@
+{
+  "name": "evening-brief-scheduler",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-01",
+  "vars": { "SITE_URL": "https://the-evening-brief-4ac580dc21ce.herokuapp.com" },
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "observability": { "enabled": true }
+}

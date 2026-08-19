@@ -48,6 +48,8 @@ final class Router
                 return self::about($pdo, $cfg);
             case '/healthz':
                 return self::healthz($pdo, $cfg);
+            case '/admin/ingest':
+                return self::adminIngest($pdo, $cfg, $query);
             case '/robots.txt':
                 return self::text(Seo::robotsTxt($cfg), 'text/plain; charset=utf-8', 3600);
             case '/sitemap.xml':
@@ -309,6 +311,70 @@ final class Router
             'weather'     => self::weatherSafe($cfg),
             'sources'     => self::sourceNames($pdo),
         ]), 200, 3600);
+    }
+
+    /**
+     * Fetch trigger for an external scheduler.
+     *
+     * Guarded by ingest.token. With no token set the route is CLOSED, not open —
+     * an unauthenticated endpoint that makes 34 outbound requests is a free
+     * amplifier for anyone who finds it.
+     */
+    private static function adminIngest(PDO $pdo, array $cfg, array $query): array
+    {
+        $want = (string) ($cfg['ingest']['token'] ?? '');
+        if ($want === '') {
+            return self::json(503, ['ok' => false, 'error' => 'ingest token not configured']);
+        }
+
+        $given = (string) ($query['token'] ?? '');
+        if ($given === '') {
+            $hdr = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+            if (stripos($hdr, 'bearer ') === 0) {
+                $given = trim(substr($hdr, 7));
+            }
+        }
+        // Constant-time compare so the token cannot be guessed a byte at a time.
+        if (!hash_equals($want, $given)) {
+            return self::json(403, ['ok' => false, 'error' => 'forbidden']);
+        }
+
+        $lock = Ingest::lock(Ingest::dataDir($cfg));
+        if ($lock === null) {
+            // Already running. Not an error — the previous tick is still going.
+            return self::json(200, ['ok' => true, 'skipped' => 'already running']);
+        }
+
+        try {
+            $r = Ingest::run($pdo, $cfg, null);
+            $pruned = 0;
+            if ((int) ($query['prune'] ?? 0) === 1) {
+                $pruned = Db::pruneOld($pdo, (int) ($cfg['ingest']['retention_days'] ?? 30));
+            }
+            return self::json(200, [
+                'ok'       => true,
+                'feeds_ok' => (int) ($r['feeds_ok'] ?? 0),
+                'failed'   => (int) ($r['feeds_failed'] ?? 0),
+                'inserted' => (int) ($r['inserted'] ?? 0),
+                'skipped'  => (int) ($r['skipped'] ?? 0),
+                'pruned'   => $pruned,
+                'articles' => Db::countArticles($pdo),
+            ]);
+        } catch (Throwable $e) {
+            error_log('[teb] admin ingest: ' . $e->getMessage());
+            return self::json(500, ['ok' => false, 'error' => 'ingest failed']);
+        } finally {
+            Ingest::unlock();
+        }
+    }
+
+    private static function json(int $status, array $payload): array
+    {
+        return [
+            'status'  => $status,
+            'headers' => ['Content-Type' => 'application/json; charset=utf-8', 'Cache-Control' => 'no-store'],
+            'body'    => (string) json_encode($payload, JSON_UNESCAPED_SLASHES),
+        ];
     }
 
     private static function healthz(PDO $pdo, array $cfg): array
