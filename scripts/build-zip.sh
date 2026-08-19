@@ -74,6 +74,23 @@ cd "$OUT"
 zip -rq "$NAME.zip" "$NAME" -x '*.DS_Store'
 cd - > /dev/null
 
+# --- second package: Heroku / GITKU ------------------------------------------
+# Heroku is not Apache-on-cPanel. Two differences decide whether it boots:
+#   * the PHP buildpack only activates when composer.json sits at the REPO ROOT
+#   * a Procfile picks the web server; heroku-php-apache2 honours .htaccess,
+#     heroku-php-nginx ignores it entirely and every pretty URL 404s.
+# It also has to be FLAT — no wrapper folder — or the buildpack finds nothing.
+HSTAGE="$OUT/heroku"
+rm -rf "$HSTAGE" "$OUT/$NAME-heroku.zip"
+mkdir -p "$HSTAGE"
+cp -R "$STAGE/." "$HSTAGE/"
+cp "$ROOT/composer.json" "$HSTAGE/composer.json"
+cp "$ROOT/Procfile" "$HSTAGE/Procfile"
+cd "$HSTAGE"
+zip -rq "$OUT/$NAME-heroku.zip" . -x '*.DS_Store'
+cd - > /dev/null
+echo "  heroku package: $OUT/$NAME-heroku.zip ($(md5sum "$OUT/$NAME-heroku.zip" | cut -d' ' -f1))"
+
 SIZE=$(du -h "$OUT/$NAME.zip" | cut -f1)
 MD5=$(md5sum "$OUT/$NAME.zip" | cut -d' ' -f1)
 COUNT=$(unzip -l "$OUT/$NAME.zip" | tail -1 | awk '{print $2}')
