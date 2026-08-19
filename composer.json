@@ -1,1 +1,15 @@
-{}
+{
+    "name": "teb/the-evening-brief",
+    "description": "The Evening Brief — a self-updating news site",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.0",
+        "ext-pdo": "*",
+        "ext-pdo_sqlite": "*",
+        "ext-curl": "*",
+        "ext-mbstring": "*",
+        "ext-simplexml": "*",
+        "ext-json": "*"
+    }
+}

@@ -84,8 +84,16 @@ HSTAGE="$OUT/heroku"
 rm -rf "$HSTAGE" "$OUT/$NAME-heroku.zip"
 mkdir -p "$HSTAGE"
 cp -R "$STAGE/." "$HSTAGE/"
-cp "$ROOT/composer.json" "$HSTAGE/composer.json"
-cp "$ROOT/Procfile" "$HSTAGE/Procfile"
+for f in composer.json composer.lock Procfile apache.conf; do
+  [ -f "$ROOT/$f" ] || { echo "REFUSING: heroku package needs $f" >&2; exit 1; }
+  cp "$ROOT/$f" "$HSTAGE/$f"
+done
+# apache.conf is a duplicate of .htaccess for hosts that drop dot-files, so it
+# must pass the same no-redirect gate.
+AD="$(grep -vE '^\s*#' "$HSTAGE/apache.conf" | grep -vE '^\s*$')"
+if grep -qiE '^\s*Redirect|\[[^]]*R=[0-9]{3}|https?://' <<<"$AD"; then
+  echo "REFUSING: apache.conf contains a redirect or a hardcoded URL" >&2; exit 1
+fi
 cd "$HSTAGE"
 zip -rq "$OUT/$NAME-heroku.zip" . -x '*.DS_Store'
 cd - > /dev/null

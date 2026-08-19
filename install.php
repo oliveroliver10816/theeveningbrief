@@ -38,13 +38,16 @@ $add(
 
 foreach (['pdo' => 'PDO', 'curl' => 'cURL', 'mbstring' => 'mbstring', 'simplexml' => 'SimpleXML', 'json' => 'JSON'] as $ext => $label) {
     $add(extension_loaded($ext), 'Extension: ' . $label, extension_loaded($ext) ? 'loaded' : 'missing',
-        'Enable ' . $label . ' in cPanel → Select PHP Version → Extensions.');
+        'cPanel: Select PHP Version → Extensions → tick ' . $label . '. '
+        . 'Heroku or another buildpack host: add "ext-' . $ext . '": "*" to composer.json and redeploy.');
 }
 
 $driver = (string) ($cfg['db']['driver'] ?? 'sqlite');
 $needed = $driver === 'mysql' ? 'pdo_mysql' : 'pdo_sqlite';
 $add(extension_loaded($needed), 'Extension: ' . $needed, extension_loaded($needed) ? 'loaded' : 'missing',
-    'Enable ' . $needed . ', or switch the driver in config.php.');
+    'Without this the site cannot open its database. cPanel: enable ' . $needed . '. '
+    . 'Heroku: add "ext-' . $needed . '": "*" to composer.json (and commit composer.lock) then redeploy. '
+    . 'Or switch the driver in config.php.');
 
 // --- writable data directory -------------------------------------------------
 $dataDir = __DIR__ . '/data';
@@ -128,9 +131,13 @@ $add($rw ? true : null, 'Pretty URLs (mod_rewrite)',
     'This is not an error. The site works either way; pretty URLs are just tidier. '
     . 'If you want them, ask your host to enable mod_rewrite and AllowOverride All.');
 
-$add(is_file(__DIR__ . '/.htaccess'), '.htaccess present',
-    is_file(__DIR__ . '/.htaccess') ? 'yes — and it contains no redirects, by design' : 'missing',
-    'Some FTP clients hide dot-files. Re-upload it with hidden files shown.');
+$ht = is_file(__DIR__ . '/.htaccess');
+$ap = is_file(__DIR__ . '/apache.conf');
+$add($ht || $ap, 'Server rules present',
+    ($ht ? '.htaccess' : '') . ($ht && $ap ? ' + ' : '') . ($ap ? 'apache.conf' : '')
+        . ($ht || $ap ? ' — no redirects in either, by design' : 'neither found'),
+    'Many upload tools silently skip dot-files, so .htaccess never arrives. Re-upload with hidden '
+    . 'files shown, or deploy apache.conf (Heroku: Procfile → heroku-php-apache2 -C apache.conf /).');
 
 // --- ingest trigger ----------------------------------------------------------
 $ranNow = null;
