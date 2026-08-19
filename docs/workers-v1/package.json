@@ -1,0 +1,13 @@
+{
+  "name": "theeveningbrief",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "wrangler dev --config ./wrangler.json",
+    "deploy": "wrangler deploy --config ./wrangler.json",
+    "migrate:local": "wrangler d1 execute evening_brief --config ./wrangler.json --local --file=./migrations/0001_init.sql",
+    "migrate:remote": "wrangler d1 execute evening_brief --config ./wrangler.json --remote --file=./migrations/0001_init.sql"
+  }
+}

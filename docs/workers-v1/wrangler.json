@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "evening-brief",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "SITE_NAME": "The Evening Brief",
+    "SITE_SHORT_NAME": "TEB",
+    "SITE_DOMAIN": "theeveningbrief.com",
+    "SITE_BASE_URL": "https://theeveningbrief.com",
+    "SITE_TAGLINE": "America first, then the world — by evening.",
+    "SITE_DESCRIPTION": "U.S. and world news, weather and recipes, gathered from trusted newsrooms and updated through the day.",
+    "SITE_TIMEZONE": "America/New_York",
+    "SITE_THEME_COLOR": "#12233d",
+    "ADS_ENABLED": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "evening_brief",
+      "database_id": "ad189cb4-3e7b-4880-829d-6d666277b95d"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/10 * * * *", "7 * * * *"]
+  }
+}

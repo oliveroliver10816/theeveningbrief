@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+  <!ENTITY xxe2 SYSTEM "http://127.0.0.1:1/leak">
+]>
+<rss version="2.0">
+  <channel>
+    <title>&xxe;</title>
+    <item>
+      <title>Local file read attempt &xxe;</title>
+      <link>https://example.org/xxe</link>
+      <description>&xxe2;</description>
+      <pubDate>Tue, 18 Aug 2026 12:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

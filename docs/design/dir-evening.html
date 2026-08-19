@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  DESIGN DIRECTION "EVENING" — editorial magazine · The Evening Brief
+  ═══════════════════════════════════════════════════════════════════════════
+
+  THE IDEA
+  This is the edition you read when the day is over. Everything on the page is
+  built around one metaphor — dusk. The page opens with a 6px "dusk meridian":
+  a gradient running lamplight-amber → madder → heather → dusk-blue → night-ink.
+  Every section's colour code is a single hue SAMPLED FROM that gradient, so the
+  colour coding reads as one sky, not a rainbow of category chips. The live
+  clock is not a widget bolted to a corner; it is part of the masthead's
+  sentence. Amber ("lamplight") is decoration-only in light mode and becomes
+  the glowing identity at night.
+
+  TYPE (Google Fonts only, with real fallback stacks)
+  · Newsreader (opsz 6..72) — display + reading text. Chosen because it is
+    drawn specifically for on-screen news; the optical-size axis gives true
+    display forms at hero size and sturdy text forms at 18px. NOT Playfair,
+    NOT Fraunces — those are the template answer.
+    stack: "Newsreader", Georgia, "Iowan Old Style", "Times New Roman", serif
+  · Archivo — UI, kickers, meta, nav, the clock (tabular-nums). A grotesque
+    with enough ink to hold 12.5–14px letterspaced caps without going frail.
+    stack: "Archivo", "Helvetica Neue", Arial, sans-serif
+
+  COLOUR TOKENS — every pair machine-verified ≥ 4.5:1 (AA small text), most > 6:1
+  light: --paper #F5EFE3 · --paper-deep #EAE1CE · --ink #272215
+         --ink-soft #5C5443 · --line #D8CDB6 · band #272215 / #EFE7D6
+  dusk spectrum (section coding, used as TEXT + hairlines, never as fills):
+         US #8A2A20 (madder) · International #33506B (dusk blue)
+         World #3D5A40 (pine) · Weather #55496F (heather)
+         Recipes #7F5410 (saffron) · Markets #4C463A (graphite)
+  lamplight #E8A13C — DECORATION ONLY on paper (pulse dot, quote mark, ticker
+         separators, meridian). It is AA (7.2:1) on the ink band + in dark mode,
+         where it is allowed to carry text.
+  dark:  bg #1F1B15 (warm umber, not gray-black) · well #2A251C · text #EFE7D6
+         soft #BDB29C · line #3E382C · spectrum lightened (all ≥ 6.6:1)
+  up/down (markets only): #2E6B40 / #A02A20 light · #7FC98F / #EF9084 dark
+
+  SPACING SCALE  4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96
+  Sections breathe at clamp(48px, 5vw, 88px) — the "more air" is structural,
+  not accidental.
+
+  LAYOUT — full-width by design, not by stretching
+  No max-width container. Page gutter = clamp(20px, 3.5vw, 72px). At 2560 the
+  hero is a three-zone spread: photographic lead (5fr) · 2×2 secondary grid
+  (4fr) · "The Evening Slate" rail + ad (3fr). Card grids snap to fixed column
+  counts (2 → 4 → 6) so rows resolve cleanly instead of leaving a ragged
+  orphan column at ultrawide. Scales to a single column at 360px.
+
+  IMAGES (production contract)
+  Publisher-CDN hotlinks at unpredictable ratios live inside fixed-ratio crop
+  boxes (aspect-ratio + overflow:hidden), with the <img> at width:100%;
+  height:100%; object-fit:cover — never distorted. Real markup:
+    <img loading="lazy" decoding="async" width=… height=… style/CSS height:auto
+         referrerpolicy="no-referrer" onerror="…reveal text card">
+  This mock uses painted stand-ins (no external assets) and shows the
+  TEXT-ONLY FALLBACK card as a first-class variant — a missing image produces
+  a deliberate typographic card on deep paper with a thick section-colour
+  rule, not a hole.
+
+  WHAT MAKES IT NOT A TEMPLATE
+  One sky, six sampled hues, one lamplight glyph; a clock inside a sentence;
+  a pull-quote interlude sized like a headline act; a wire section set as
+  rows, recipes set warm, markets pushed low and set quiet — hierarchy as an
+  editorial opinion, enforced by the layout itself.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Evening Brief — direction “Evening”</title>
+<meta name="description" content="Design direction EVENING: an editorial evening magazine on warm paper, dusk-spectrum section coding, photographic lead.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────── tokens ─────────────────────────── */
+:root{
+  --paper:#F5EFE3; --paper-deep:#EAE1CE; --ink:#272215; --ink-soft:#5C5443;
+  --line:#D8CDB6; --line-strong:#B9AC8E;
+  --band:#272215; --band-text:#EFE7D6; --band-soft:#C9BFA9;
+  --lamplight:#E8A13C;
+  --c-us:#8A2A20; --c-intl:#33506B; --c-world:#3D5A40;
+  --c-weather:#55496F; --c-recipes:#7F5410; --c-markets:#4C463A;
+  --up:#2E6B40; --down:#A02A20;
+  --meridian:linear-gradient(90deg,#E8A13C 0%,#C96B32 16%,#8A2A20 36%,#55496F 60%,#33506B 80%,#272215 100%);
+  --shadow:0 1px 0 rgba(39,34,21,.06),0 10px 28px -18px rgba(39,34,21,.35);
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px; --s9:96px;
+  --gutter:clamp(20px,3.5vw,72px);
+  --serif:"Newsreader",Georgia,"Iowan Old Style","Times New Roman",serif;
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#1F1B15; --paper-deep:#2A251C; --ink:#EFE7D6; --ink-soft:#BDB29C;
+    --line:#3E382C; --line-strong:#57503F;
+    --band:#15110B; --band-text:#EFE7D6; --band-soft:#BDB29C;
+    --c-us:#E5988A; --c-intl:#9BB8D6; --c-world:#A6C4A0;
+    --c-weather:#BBAEDD; --c-recipes:#DDAE5C; --c-markets:#B0A896;
+    --up:#7FC98F; --down:#EF9084;
+    --meridian:linear-gradient(90deg,#E8A13C 0%,#9E4A26 18%,#6E2119 38%,#3D3452 60%,#24374D 80%,#0D0B07 100%);
+    --shadow:0 1px 0 rgba(0,0,0,.4),0 12px 30px -18px rgba(0,0,0,.7);
+  }
+}
+/* ─────────────────────────── base ─────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:18px}
+body{
+  font-family:var(--serif); font-size:1rem; line-height:1.55;
+  color:var(--ink); background:var(--paper);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+::selection{background:var(--lamplight);color:#272215}
+:focus-visible{outline:2px solid var(--c-us);outline-offset:2px;border-radius:2px}
+.wrap{padding-inline:var(--gutter)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ─────────────────────────── meridian ─────────────────────────── */
+.meridian{height:6px;background:var(--meridian)}
+
+/* ─────────────────────────── masthead ─────────────────────────── */
+.masthead{border-bottom:1px solid var(--line-strong);padding-block:var(--s5)}
+.mast-grid{display:grid;gap:var(--s4);align-items:center;grid-template-columns:1fr;text-align:center}
+.mast-side{font-family:var(--sans);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);line-height:1.6}
+.mast-side strong{color:var(--ink);font-weight:600}
+.wordmark{font-family:var(--serif);font-optical-sizing:auto;font-weight:600;font-size:clamp(2.2rem,4.4vw,4.2rem);line-height:1.02;letter-spacing:-.015em}
+.wordmark a{text-decoration:none}
+.wordmark .stop{color:var(--c-us)}
+.tagline{font-family:var(--serif);font-style:italic;font-size:1rem;color:var(--ink-soft);margin-top:var(--s2)}
+.mast-clock{justify-self:center;display:flex;align-items:center;gap:var(--s3);font-family:var(--sans)}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--lamplight);box-shadow:0 0 0 0 rgba(232,161,60,.55);animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(232,161,60,0)}100%{box-shadow:0 0 0 0 rgba(232,161,60,0)}}
+.clock-num{font-size:1.85rem;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.clock-cap{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);max-width:12ch;text-align:left;line-height:1.45}
+@media (min-width:900px){
+  .mast-grid{grid-template-columns:1fr auto 1fr;text-align:left}
+  .mast-clock{justify-self:end}
+  .wordmark,.tagline{text-align:center}
+}
+
+/* ─────────────────────────── ticker ─────────────────────────── */
+.ticker{background:var(--band);color:var(--band-text);display:flex;align-items:stretch;overflow:hidden}
+.ticker-label{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);font-family:var(--sans);font-weight:700;font-size:.78rem;letter-spacing:.14em;color:var(--lamplight);white-space:nowrap;border-right:1px solid rgba(239,231,214,.18)}
+.ticker-viewport{overflow:hidden;flex:1;display:flex;align-items:center}
+.ticker-track{display:flex;width:max-content;animation:tick 90s linear infinite}
+.ticker:hover .ticker-track,.ticker:focus-within .ticker-track{animation-play-state:paused}
+.ticker-set{display:flex;align-items:center}
+.ticker a{display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--s4);font-family:var(--sans);font-size:.89rem;text-decoration:none;white-space:nowrap;color:var(--band-text)}
+.ticker a:hover{text-decoration:underline;text-decoration-color:var(--lamplight);text-underline-offset:4px}
+.tick-sep{width:6px;height:6px;background:var(--lamplight);transform:rotate(45deg);flex:none;opacity:.85}
+@keyframes tick{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){
+  .ticker-track{animation:none}
+  .ticker-viewport{overflow-x:auto}
+  .pulse{animation:none}
+}
+
+/* ─────────────────────────── section nav ─────────────────────────── */
+.secnav{border-bottom:1px solid var(--line);background:var(--paper)}
+.secnav ul{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:0 var(--s2)}
+.secnav a{display:inline-flex;align-items:center;gap:var(--s2);min-height:48px;padding:var(--s2) var(--s4);font-family:var(--sans);font-weight:600;font-size:.89rem;letter-spacing:.05em;text-transform:uppercase;text-decoration:none;color:var(--ink);border-bottom:3px solid transparent}
+.secnav a:hover,.secnav a[aria-current]{border-bottom-color:var(--tick,var(--ink))}
+.secnav .swatch{width:8px;height:8px;background:var(--tick);flex:none}
+.secnav .quiet{color:var(--ink-soft)}
+
+/* ─────────────────────────── section headers ─────────────────────────── */
+.sechead{display:flex;align-items:baseline;gap:var(--s4);margin-bottom:var(--s6)}
+.sechead h2{font-family:var(--sans);font-weight:700;font-size:.94rem;letter-spacing:.14em;text-transform:uppercase;color:var(--hue);flex:none;padding-bottom:var(--s2);border-bottom:3px solid var(--hue)}
+.sechead .rule{flex:1;border-bottom:1px solid var(--line)}
+.sechead .more{flex:none;display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--s2);font-family:var(--sans);font-size:.83rem;font-weight:600;color:var(--ink-soft);text-decoration:none}
+.sechead .more:hover{color:var(--hue);text-decoration:underline;text-underline-offset:4px}
+
+/* ─────────────────────────── photo stand-ins ───────────────────────────
+   In production this box holds the hotlinked <img> (object-fit:cover).
+   The .ph paints a dusk-photograph placeholder so the mock ships with
+   zero external assets. */
+.media{position:relative;display:block;overflow:hidden;background:var(--paper-deep)}
+.media.r32{aspect-ratio:3/2}
+.media.r1610{aspect-ratio:16/10}
+.media.r43{aspect-ratio:4/3}
+.media.r11{aspect-ratio:1/1}
+.ph{position:absolute;inset:0}
+.ph::after{content:"";position:absolute;inset:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.16'/></svg>");mix-blend-mode:overlay}
+.ph-storm{background:radial-gradient(120% 90% at 70% 20%,#8E9AA8 0%,#5C6B7C 40%,#33404F 75%,#1E2833 100%)}
+.ph-dusk{background:linear-gradient(180deg,#4A3B55 0%,#7C4234 45%,#C97B3C 78%,#E8A968 92%,#3A3A46 100%)}
+.ph-capitol{background:linear-gradient(180deg,#38455C 0%,#5A5670 55%,#8A5A4C 82%,#2A2A33 100%)}
+.ph-smoke{background:linear-gradient(180deg,#8C7B65 0%,#A08464 45%,#6E5B48 80%,#3E362B 100%)}
+.ph-lab{background:linear-gradient(160deg,#DCD4C2 0%,#9FA8A0 55%,#5F6E6C 100%)}
+.ph-sea{background:linear-gradient(180deg,#2E4356 0%,#3E617A 55%,#6E8A9C 85%,#22323F 100%)}
+.ph-field{background:linear-gradient(180deg,#A8B49C 0%,#71865E 55%,#42513A 100%)}
+.ph-city{background:linear-gradient(180deg,#232A3C 0%,#3C3550 55%,#7C4A3C 85%,#171923 100%)}
+.ph-food1{background:radial-gradient(110% 100% at 30% 25%,#E8C87C 0%,#C98B3C 45%,#8A5326 80%,#4E2F17 100%)}
+.ph-food2{background:radial-gradient(110% 100% at 65% 30%,#EABFA0 0%,#C4744A 50%,#7E3B24 85%,#42210F 100%)}
+.ph-food3{background:radial-gradient(110% 100% at 40% 30%,#D8DFA8 0%,#8FAE5C 50%,#4C6B33 85%,#2A3A1D 100%)}
+.ph-food4{background:radial-gradient(110% 100% at 55% 30%,#F0DCB4 0%,#CB9A55 50%,#83612C 85%,#443112 100%)}
+.credit{font-family:var(--sans);font-size:.72rem;letter-spacing:.03em;color:var(--ink-soft);padding-top:var(--s2)}
+
+/* ─────────────────────────── cards ─────────────────────────── */
+.kicker{font-family:var(--sans);font-weight:700;font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;color:var(--hue,var(--ink-soft))}
+.k-us{--hue:var(--c-us)} .k-intl{--hue:var(--c-intl)} .k-world{--hue:var(--c-world)}
+.k-weather{--hue:var(--c-weather)} .k-recipes{--hue:var(--c-recipes)} .k-markets{--hue:var(--c-markets)}
+.card{display:flex;flex-direction:column;gap:var(--s3)}
+.card-hed{font-family:var(--serif);font-weight:600;line-height:1.16;letter-spacing:-.01em;font-size:1.22rem}
+.card-hed a{text-decoration:none}
+.card-hed a:hover{text-decoration:underline;text-decoration-thickness:2px;text-decoration-color:var(--hue,var(--ink));text-underline-offset:3px}
+.card-sum{font-size:1rem;line-height:1.55;color:var(--ink-soft)}
+.card-meta{font-family:var(--sans);font-size:.78rem;color:var(--ink-soft);letter-spacing:.02em}
+.card-meta .src{font-weight:600;color:var(--ink)}
+.card--feature .card-hed{font-size:1.7rem}
+.card--feature .card-sum{font-size:1rem}
+/* text-only fallback — a missing publisher image must produce THIS, not a hole */
+.card--noimg{background:var(--paper-deep);border-top:4px solid var(--hue,var(--ink));padding:var(--s5);gap:var(--s3);box-shadow:var(--shadow)}
+.card--noimg .card-hed{font-size:1.45rem}
+
+/* ─────────────────────────── hero ─────────────────────────── */
+.hero{padding-block:var(--s7) var(--s6);display:grid;gap:var(--s7) var(--s6);grid-template-areas:"lead" "subs" "rail"}
+.hero-lead{grid-area:lead}
+.hero-subs{grid-area:subs;display:grid;gap:var(--s6)}
+.hero-rail{grid-area:rail;display:grid;gap:var(--s5);align-content:start}
+.lead-hed{font-family:var(--serif);font-optical-sizing:auto;font-weight:600;font-size:clamp(1.9rem,3.2vw,3.35rem);line-height:1.06;letter-spacing:-.02em;margin-top:var(--s4)}
+.lead-hed a{text-decoration:none}
+.lead-hed a:hover{text-decoration:underline;text-decoration-thickness:3px;text-decoration-color:var(--c-us);text-underline-offset:5px}
+.lead-stand{font-size:1.16rem;line-height:1.55;color:var(--ink-soft);margin-top:var(--s3);max-width:66ch}
+.lead-meta{margin-top:var(--s3)}
+@media (min-width:760px){.hero-subs{grid-template-columns:1fr 1fr}}
+@media (min-width:1120px){
+  .hero{grid-template-columns:3fr 2fr;grid-template-areas:"lead subs" "rail rail"}
+  .hero-subs{grid-template-columns:1fr 1fr}
+  .hero-rail{grid-template-columns:1fr 320px;align-items:start}
+}
+@media (min-width:1720px){
+  .hero{grid-template-columns:5fr 4fr 3fr;grid-template-areas:"lead subs rail"}
+  .hero-subs{grid-template-columns:1fr 1fr;align-content:start}
+  .hero-rail{grid-template-columns:1fr}
+}
+
+/* the evening slate (rail) */
+.slate{border-top:3px solid var(--ink);padding-top:var(--s4)}
+.slate h2{font-family:var(--sans);font-weight:700;font-size:.94rem;letter-spacing:.14em;text-transform:uppercase}
+.slate p.note{font-family:var(--serif);font-style:italic;color:var(--ink-soft);font-size:.94rem;margin-top:var(--s1)}
+.slate ol{list-style:none;margin-top:var(--s4)}
+.slate li{border-top:1px solid var(--line)}
+.slate li:first-child{border-top:0}
+.slate a{display:flex;gap:var(--s3);align-items:baseline;padding-block:var(--s3);min-height:44px;text-decoration:none}
+.slate a:hover .sl-hed{text-decoration:underline;text-underline-offset:3px}
+.sl-time{font-family:var(--sans);font-size:.78rem;font-weight:600;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex:none;width:4.2em}
+.sl-hed{font-family:var(--serif);font-weight:500;font-size:1rem;line-height:1.3}
+.sl-src{font-family:var(--sans);font-size:.72rem;color:var(--ink-soft);display:block;margin-top:2px;letter-spacing:.04em}
+@media (min-width:1120px) and (max-width:1719px){
+  .slate ol{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 var(--s6)}
+  .slate li{border-top:1px solid var(--line)}
+}
+
+/* ─────────────────────────── ad slots — reserved, zero CLS ─────────────────────────── */
+.ad{display:grid;place-items:center;border:1px solid var(--line);background:var(--paper-deep);color:var(--ink-soft);font-family:var(--sans);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase}
+.ad-billboard{min-height:250px;margin-block:var(--s6)}
+.ad-rail{min-height:280px}
+.ad-mid{min-height:250px;margin-block:var(--s8)}
+@media (max-width:759px){.ad-billboard,.ad-mid{min-height:100px}}
+
+/* ─────────────────────────── section blocks ─────────────────────────── */
+.block{padding-block:clamp(48px,5vw,88px);border-top:1px solid var(--line)}
+.grid-cards{display:grid;gap:var(--s6) var(--s5)}
+@media (min-width:760px){.grid-cards{grid-template-columns:1fr 1fr}.span2{grid-column:span 2}}
+@media (min-width:1120px){.grid-cards.cols4{grid-template-columns:repeat(4,1fr)}}
+@media (min-width:1120px){.grid-cards.cols3{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1720px){.grid-cards.cols6{grid-template-columns:repeat(6,1fr)}.grid-cards.cols6 .span2{grid-column:span 1}}
+
+/* world/wire — set as rows, not cards: the wire reads like a wire */
+.wire{display:grid;gap:0 var(--s7)}
+.wire article{display:grid;grid-template-columns:96px 1fr;gap:var(--s4);padding-block:var(--s4);border-top:1px solid var(--line);align-items:start}
+.wire article:first-child{border-top:0}
+.wire .media{width:96px}
+.wire .card-hed{font-size:1.08rem}
+@media (min-width:900px){.wire{grid-template-columns:1fr 1fr}.wire article:nth-child(2){border-top:0}}
+@media (min-width:1720px){.wire{grid-template-columns:1fr 1fr 1fr}.wire article:nth-child(3){border-top:0}}
+
+/* ─────────────────────────── pull-quote interlude ─────────────────────────── */
+.interlude{padding-block:clamp(48px,5vw,88px);border-top:1px solid var(--line);text-align:center}
+.interlude blockquote{position:relative;max-width:52ch;margin-inline:auto;font-family:var(--serif);font-optical-sizing:auto;font-style:italic;font-weight:500;font-size:clamp(1.5rem,2.6vw,2.6rem);line-height:1.22;letter-spacing:-.01em}
+.interlude blockquote::before{content:"“";display:block;font-size:2.2em;line-height:.6;color:var(--lamplight);font-style:normal;margin-bottom:var(--s3)}
+.interlude figcaption{margin-top:var(--s5);font-family:var(--sans);font-size:.83rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.interlude figcaption a{color:var(--ink);font-weight:600;text-decoration-color:var(--lamplight);text-underline-offset:4px;padding:var(--s3);margin:calc(-1*var(--s3))}
+
+/* ─────────────────────────── weather strip ─────────────────────────── */
+.weather{background:var(--paper-deep);border-block:1px solid var(--line);padding-block:var(--s6)}
+.weather-grid{display:grid;gap:var(--s5);align-items:center}
+.wx-now{display:flex;align-items:baseline;gap:var(--s4)}
+.wx-temp{font-family:var(--serif);font-weight:600;font-size:3.4rem;line-height:1;letter-spacing:-.02em}
+.wx-desc{font-family:var(--sans);font-size:.89rem;color:var(--ink-soft);line-height:1.5}
+.wx-desc strong{color:var(--ink);font-weight:600}
+.wx-days{display:flex;gap:var(--s5);flex-wrap:wrap}
+.wx-day{font-family:var(--sans);font-size:.83rem;text-align:center;min-width:64px}
+.wx-day .d{font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:.72rem;color:var(--ink-soft)}
+.wx-day .t{font-weight:600;font-variant-numeric:tabular-nums;margin-top:var(--s1)}
+.wx-day .c{color:var(--ink-soft);font-size:.72rem;margin-top:2px}
+.wx-alert{justify-self:start;display:inline-flex;align-items:center;gap:var(--s2);min-height:44px;padding:var(--s2) var(--s4);border:1.5px solid var(--c-us);color:var(--c-us);font-family:var(--sans);font-weight:600;font-size:.83rem;text-decoration:none}
+.wx-alert:hover{background:var(--c-us);color:var(--paper)}
+@media (min-width:1120px){.weather-grid{grid-template-columns:auto 1fr auto}.wx-days{justify-content:center}.wx-alert{justify-self:end}}
+
+/* ─────────────────────────── recipes ─────────────────────────── */
+.block-recipes .card--noimg{border-top-color:var(--c-recipes)}
+.recipe-meta{font-family:var(--sans);font-size:.78rem;color:var(--ink-soft);display:flex;gap:var(--s3);flex-wrap:wrap}
+.recipe-meta b{color:var(--ink);font-weight:600}
+@media (min-width:1120px){.grid-cards.recipes{grid-template-columns:repeat(4,1fr)}}
+
+/* ─────────────────────────── markets — low, quiet, small ─────────────────────────── */
+.markets{border-top:1px solid var(--line);padding-block:var(--s6) var(--s7)}
+.markets-head{display:flex;align-items:baseline;gap:var(--s4);margin-bottom:var(--s5)}
+.markets-head h2{font-family:var(--sans);font-weight:700;font-size:.83rem;letter-spacing:.14em;text-transform:uppercase;color:var(--c-markets)}
+.markets-head .rule{flex:1;border-bottom:1px solid var(--line)}
+.markets-head .after{font-family:var(--serif);font-style:italic;font-size:.89rem;color:var(--ink-soft)}
+.markets-grid{display:grid;gap:var(--s5)}
+.idx{display:flex;gap:var(--s5);flex-wrap:wrap;align-content:center}
+.idx div{font-family:var(--sans);font-size:.83rem}
+.idx .n{font-weight:600}
+.idx .v{font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.idx .chg{font-weight:700;font-variant-numeric:tabular-nums}
+.chg.up{color:var(--up)} .chg.down{color:var(--down)}
+.mkt-card .card-hed{font-size:1.05rem}
+@media (min-width:900px){.markets-grid{grid-template-columns:1fr 1fr 1.2fr;align-items:start}}
+
+/* ─────────────────────────── footer ─────────────────────────── */
+footer{background:var(--band);color:var(--band-text);margin-top:var(--s7)}
+.foot-meridian{height:6px;background:var(--meridian)}
+.foot-grid{display:grid;gap:var(--s6);padding-block:var(--s8)}
+.foot-brand .wordmark{font-size:1.8rem}
+.foot-brand p{font-size:.89rem;color:var(--band-soft);margin-top:var(--s3);max-width:44ch;line-height:1.6}
+.foot-col h3{font-family:var(--sans);font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lamplight);margin-bottom:var(--s3)}
+.foot-col ul{list-style:none}
+.foot-col a{display:inline-flex;align-items:center;min-height:44px;font-family:var(--sans);font-size:.89rem;color:var(--band-text);text-decoration:none}
+.foot-col a:hover{text-decoration:underline;text-decoration-color:var(--lamplight);text-underline-offset:4px}
+.foot-col .plain{font-family:var(--sans);font-size:.83rem;color:var(--band-soft);line-height:2.1}
+.foot-legal{border-top:1px solid rgba(239,231,214,.16);padding-block:var(--s5);font-family:var(--sans);font-size:.78rem;color:var(--band-soft);display:flex;gap:var(--s5);flex-wrap:wrap;justify-content:space-between}
+@media (min-width:900px){.foot-grid{grid-template-columns:1.4fr 1fr 1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="meridian" aria-hidden="true"></div>
+
+<!-- ═══════════ MASTHEAD — the clock lives in the masthead sentence ═══════════ -->
+<header class="masthead wrap">
+  <div class="mast-grid">
+    <div class="mast-side">
+      <strong>Tuesday, August&nbsp;19, 2026</strong><br>
+      Evening edition · No.&nbsp;214<br>
+      Free to read
+    </div>
+    <div>
+      <h1 class="wordmark"><a href="#">The Evening Brief<span class="stop">.</span></a></h1>
+      <p class="tagline">The day’s news, settled.</p>
+    </div>
+    <div class="mast-clock">
+      <span class="pulse"></span>
+      <span class="clock-num" id="clock">6:42&nbsp;PM</span>
+      <span class="clock-cap">in Washington · updated through the evening</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ HEADLINE TICKER — headlines, never markets ═══════════ -->
+<div class="ticker" role="region" aria-label="Latest headlines">
+  <span class="ticker-label"><span class="tick-sep" aria-hidden="true"></span>LATEST</span>
+  <div class="ticker-viewport">
+    <div class="ticker-track">
+      <div class="ticker-set">
+        <a href="#">Carolinas order coastal evacuations as Hurricane Elena turns north</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">Supreme Court to hear state AI-disclosure case in October</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">Smoke advisories now stretch from Denver to Chicago</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">Ceasefire monitors report first aid convoy reaching El&nbsp;Fasher</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">FDA clears first at-home flu-and-COVID test for children</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">Metro restores Red Line service after signal fault</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">Typhoon Nari makes landfall south of Shanghai</a><span class="tick-sep" aria-hidden="true"></span>
+        <a href="#">House returns Sept 2 with 28 days to avert a shutdown</a><span class="tick-sep" aria-hidden="true"></span>
+      </div>
+      <div class="ticker-set" aria-hidden="true">
+        <a href="#" tabindex="-1">Carolinas order coastal evacuations as Hurricane Elena turns north</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">Supreme Court to hear state AI-disclosure case in October</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">Smoke advisories now stretch from Denver to Chicago</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">Ceasefire monitors report first aid convoy reaching El&nbsp;Fasher</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">FDA clears first at-home flu-and-COVID test for children</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">Metro restores Red Line service after signal fault</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">Typhoon Nari makes landfall south of Shanghai</a><span class="tick-sep"></span>
+        <a href="#" tabindex="-1">House returns Sept 2 with 28 days to avert a shutdown</a><span class="tick-sep"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECTION NAV — hues sampled from the meridian ═══════════ -->
+<nav class="secnav wrap" aria-label="Sections">
+  <ul>
+    <li><a href="#" style="--tick:var(--c-us)" aria-current="page"><span class="swatch" aria-hidden="true"></span>U.S.</a></li>
+    <li><a href="#" style="--tick:var(--c-intl)"><span class="swatch" aria-hidden="true"></span>International</a></li>
+    <li><a href="#" style="--tick:var(--c-world)"><span class="swatch" aria-hidden="true"></span>World&nbsp;wire</a></li>
+    <li><a href="#" style="--tick:var(--c-weather)"><span class="swatch" aria-hidden="true"></span>Weather</a></li>
+    <li><a href="#" style="--tick:var(--c-recipes)"><span class="swatch" aria-hidden="true"></span>Recipes</a></li>
+    <li><a href="#" style="--tick:var(--c-markets)" class="quiet"><span class="swatch" aria-hidden="true"></span>Markets</a></li>
+    <li><a href="#" class="quiet">Search</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<!-- ═══════════ HERO — lead · four secondaries · the evening slate ═══════════ -->
+<section class="hero wrap" aria-label="Top stories">
+
+  <article class="hero-lead k-us">
+    <a class="media r1610" href="#" tabindex="-1" aria-hidden="true">
+      <span class="ph ph-storm"></span>
+    </a>
+    <p class="credit">Satellite image: NOAA GOES-East, 5:30 p.m. EDT, via ABC News</p>
+    <p class="kicker k-us" style="margin-top:var(--s4)">U.S. · Hurricane Elena</p>
+    <h2 class="lead-hed"><a href="#">Elena strengthens to Category&nbsp;3 as evacuation orders reach the Carolina coast</a></h2>
+    <p class="lead-stand">Forecasters moved the storm’s likely landfall window to Thursday evening between Charleston and Wilmington. More than 400,000 people are under mandatory orders tonight, and utilities have staged crews from six states.</p>
+    <p class="card-meta lead-meta"><span class="src">ABC News</span> · 6:18&nbsp;PM · <a href="#">Read the full story at ABC News&nbsp;↗</a></p>
+  </article>
+
+  <div class="hero-subs">
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-capitol"></span></a>
+      <p class="kicker k-us">Politics</p>
+      <h3 class="card-hed"><a href="#">Supreme Court agrees to hear challenge to state AI-disclosure laws this fall</a></h3>
+      <p class="card-meta"><span class="src">NPR</span> · 5:47&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-smoke"></span></a>
+      <p class="kicker k-us">Climate</p>
+      <h3 class="card-hed"><a href="#">Wildfire smoke advisories stretch from Denver to Chicago as the heat dome lingers</a></h3>
+      <p class="card-meta"><span class="src">NBC News</span> · 5:12&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-dusk"></span></a>
+      <p class="kicker k-us">Congress</p>
+      <h3 class="card-hed"><a href="#">House returns to a September shutdown deadline with no spending deal in sight</a></h3>
+      <p class="card-meta"><span class="src">PBS NewsHour</span> · 4:55&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-lab"></span></a>
+      <p class="kicker k-us">Health</p>
+      <h3 class="card-hed"><a href="#">FDA clears the first at-home flu-and-COVID combination test for children</a></h3>
+      <p class="card-meta"><span class="src">CBS News</span> · 4:20&nbsp;PM</p>
+    </article>
+  </div>
+
+  <aside class="hero-rail" aria-label="The evening slate">
+    <div class="slate">
+      <h2>The Evening Slate</h2>
+      <p class="note">Five stories that moved while you were working.</p>
+      <ol>
+        <li><a href="#"><span class="sl-time">6:31</span><span><span class="sl-hed">Metro restores Red Line service after a morning signal fault</span><span class="sl-src">WTOP</span></span></a></li>
+        <li><a href="#"><span class="sl-time">5:58</span><span><span class="sl-hed">Caldwell fire east of Los Angeles reaches 40% containment</span><span class="sl-src">KTLA</span></span></a></li>
+        <li><a href="#"><span class="sl-time">5:26</span><span><span class="sl-hed">NTSB opens hearing into the Ohio rail-crossing collision</span><span class="sl-src">UPI</span></span></a></li>
+        <li><a href="#"><span class="sl-time">4:49</span><span><span class="sl-hed">Teachers’ strike in Portland ends with a tentative three-year deal</span><span class="sl-src">SRN News</span></span></a></li>
+        <li><a href="#"><span class="sl-time">4:12</span><span><span class="sl-hed">WNBA playoff picture set after the Mystics clinch on the road</span><span class="sl-src">ESPN</span></span></a></li>
+      </ol>
+    </div>
+    <div class="ad ad-rail" aria-label="Advertisement slot">Advertisement · 300×250</div>
+  </aside>
+
+</section>
+
+<div class="wrap"><div class="ad ad-billboard" aria-label="Advertisement slot">Advertisement · 970×250</div></div>
+
+<!-- ═══════════ U.S. BLOCK — 8 stories, one featured, one text-only fallback ═══════════ -->
+<section class="block wrap" style="--hue:var(--c-us)" aria-labelledby="h-us">
+  <div class="sechead">
+    <h2 id="h-us">U.S. News</h2>
+    <div class="rule" aria-hidden="true"></div>
+    <a class="more" href="#">More U.S. →</a>
+  </div>
+  <div class="grid-cards cols4">
+    <article class="card card--feature span2 k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-sea"></span></a>
+      <p class="credit">Photo: U.S. Coast Guard via NBC News</p>
+      <p class="kicker k-us">Gulf Coast</p>
+      <h3 class="card-hed"><a href="#">Ahead of Elena, a quiet exodus: how three barrier-island towns decided when to go</a></h3>
+      <p class="card-sum">Local officials weighed forecast cones against ferry schedules and nursing-home transfers. Their calls, hours apart, will shape the storm’s human cost.</p>
+      <p class="card-meta"><span class="src">NBC News</span> · 3:40&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-field"></span></a>
+      <p class="kicker k-us">Agriculture</p>
+      <h3 class="card-hed"><a href="#">Corn Belt drought forces early harvest decisions across three states</a></h3>
+      <p class="card-meta"><span class="src">The New York Times</span> · 3:05&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-city"></span></a>
+      <p class="kicker k-us">Justice</p>
+      <h3 class="card-hed"><a href="#">Federal judge blocks parts of the new asylum processing rule</a></h3>
+      <p class="card-meta"><span class="src">CBS News</span> · 2:48&nbsp;PM</p>
+    </article>
+    <!-- text-only fallback: publisher image failed to load — this is the designed state, not an error -->
+    <article class="card card--noimg k-us" style="--hue:var(--c-us)">
+      <p class="kicker k-us">Education</p>
+      <h3 class="card-hed"><a href="#">Chicago schools open a week late as the district rewires 40 buildings for heat</a></h3>
+      <p class="card-sum">The district said 40 schools without air conditioning cannot safely open before Labor Day.</p>
+      <p class="card-meta"><span class="src">SRN News</span> · 2:31&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-capitol"></span></a>
+      <p class="kicker k-us">Politics</p>
+      <h3 class="card-hed"><a href="#">Senate committee advances bipartisan rail-safety bill, two years on</a></h3>
+      <p class="card-meta"><span class="src">NPR</span> · 2:02&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-lab"></span></a>
+      <p class="kicker k-us">Science</p>
+      <h3 class="card-hed"><a href="#">NASA confirms September launch window for the Europa relay orbiter</a></h3>
+      <p class="card-meta"><span class="src">UPI</span> · 1:44&nbsp;PM</p>
+    </article>
+    <article class="card k-us">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-dusk"></span></a>
+      <p class="kicker k-us">West</p>
+      <h3 class="card-hed"><a href="#">Colorado River states miss another deadline on long-term water cuts</a></h3>
+      <p class="card-meta"><span class="src">The New York Times</span> · 1:19&nbsp;PM</p>
+    </article>
+  </div>
+</section>
+
+<!-- ═══════════ PULL-QUOTE INTERLUDE — the editorial breath between blocks ═══════════ -->
+<section class="interlude wrap" aria-label="Quote of the evening">
+  <figure>
+    <blockquote>
+      <p>The water is warmer than any August we have on record, and the storm knows it.</p>
+    </blockquote>
+    <figcaption>Dr.&nbsp;Amara Okafor, NOAA hurricane research division — <a href="#">from tonight’s PBS NewsHour&nbsp;↗</a></figcaption>
+  </figure>
+</section>
+
+<!-- ═══════════ INTERNATIONAL — 6 stories, one clean row at ultrawide ═══════════ -->
+<section class="block wrap" style="--hue:var(--c-intl)" aria-labelledby="h-intl">
+  <div class="sechead">
+    <h2 id="h-intl">International</h2>
+    <div class="rule" aria-hidden="true"></div>
+    <a class="more" href="#">More international →</a>
+  </div>
+  <div class="grid-cards cols3 cols6">
+    <article class="card k-intl">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-sea"></span></a>
+      <p class="kicker k-intl">East Asia</p>
+      <h3 class="card-hed"><a href="#">Typhoon Nari makes landfall south of Shanghai; two million moved inland</a></h3>
+      <p class="card-meta"><span class="src">BBC News</span> · 6:02&nbsp;PM</p>
+    </article>
+    <article class="card k-intl">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-smoke"></span></a>
+      <p class="kicker k-intl">Sudan</p>
+      <h3 class="card-hed"><a href="#">First aid convoy in five months reaches El&nbsp;Fasher under ceasefire monitors</a></h3>
+      <p class="card-meta"><span class="src">Al Jazeera</span> · 5:35&nbsp;PM</p>
+    </article>
+    <article class="card k-intl">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-city"></span></a>
+      <p class="kicker k-intl">Europe</p>
+      <h3 class="card-hed"><a href="#">Germany’s coalition survives a confidence vote over the pension package</a></h3>
+      <p class="card-meta"><span class="src">DW</span> · 4:58&nbsp;PM</p>
+    </article>
+    <article class="card card--noimg k-intl" style="--hue:var(--c-intl)">
+      <p class="kicker k-intl">South America</p>
+      <h3 class="card-hed"><a href="#">Argentina and Chile sign a lithium-corridor accord after a decade of talks</a></h3>
+      <p class="card-sum">The rail-and-port agreement routes Andean lithium through Antofagasta from 2029.</p>
+      <p class="card-meta"><span class="src">The Guardian</span> · 4:31&nbsp;PM</p>
+    </article>
+    <article class="card k-intl">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-dusk"></span></a>
+      <p class="kicker k-intl">Middle East</p>
+      <h3 class="card-hed"><a href="#">Talks on the maritime boundary resume in Amman, mediators say</a></h3>
+      <p class="card-meta"><span class="src">Sky News</span> · 3:57&nbsp;PM</p>
+    </article>
+    <article class="card k-intl">
+      <a class="media r32" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-field"></span></a>
+      <p class="kicker k-intl">Africa</p>
+      <h3 class="card-hed"><a href="#">Kenya’s high court suspends the new digital-ID rollout pending review</a></h3>
+      <p class="card-meta"><span class="src">The Washington Post</span> · 3:22&nbsp;PM</p>
+    </article>
+  </div>
+</section>
+
+<!-- ═══════════ WORLD WIRE — set as rows; the wire reads like a wire ═══════════ -->
+<section class="block wrap" style="--hue:var(--c-world)" aria-labelledby="h-world">
+  <div class="sechead">
+    <h2 id="h-world">World Wire</h2>
+    <div class="rule" aria-hidden="true"></div>
+    <a class="more" href="#">More from the wire →</a>
+  </div>
+  <div class="wire">
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-sea"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">Pacific</p>
+        <h3 class="card-hed"><a href="#">Tonga volcano observatory raises alert level after overnight tremors</a></h3>
+        <p class="card-meta"><span class="src">UPI</span> · 6:11&nbsp;PM</p>
+      </div>
+    </article>
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-city"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">Europe</p>
+        <h3 class="card-hed"><a href="#">Rail strike in France to pause for a 48-hour mediation window</a></h3>
+        <p class="card-meta"><span class="src">SRN News</span> · 5:49&nbsp;PM</p>
+      </div>
+    </article>
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-smoke"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">South Asia</p>
+        <h3 class="card-hed"><a href="#">Monsoon flooding displaces 60,000 in Bangladesh’s northeast</a></h3>
+        <p class="card-meta"><span class="src">Al Jazeera</span> · 5:20&nbsp;PM</p>
+      </div>
+    </article>
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-field"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">Americas</p>
+        <h3 class="card-hed"><a href="#">Canada expands its wildfire-fighting exchange with Australia</a></h3>
+        <p class="card-meta"><span class="src">BBC News</span> · 4:44&nbsp;PM</p>
+      </div>
+    </article>
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-lab"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">Health</p>
+        <h3 class="card-hed"><a href="#">WHO certifies Timor-Leste malaria-free after a 20-year campaign</a></h3>
+        <p class="card-meta"><span class="src">DW</span> · 4:07&nbsp;PM</p>
+      </div>
+    </article>
+    <article class="k-world">
+      <a class="media r11" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-dusk"></span></a>
+      <div class="card" style="gap:var(--s2)">
+        <p class="kicker k-world">Polar</p>
+        <h3 class="card-hed"><a href="#">Research icebreaker begins the first winter crossing of the Northwest Passage</a></h3>
+        <p class="card-meta"><span class="src">The Guardian</span> · 3:36&nbsp;PM</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ═══════════ WEATHER STRIP ═══════════ -->
+<section class="weather" aria-labelledby="h-wx">
+  <div class="wrap weather-grid">
+    <div>
+      <p class="kicker k-weather" id="h-wx">This evening in Washington</p>
+      <div class="wx-now" style="margin-top:var(--s3)">
+        <span class="wx-temp">84°</span>
+        <p class="wx-desc"><strong>Clear, feels like 88°</strong><br>Wind SW 7&nbsp;mph · Humidity 62% · Sunset 7:58&nbsp;PM</p>
+      </div>
+    </div>
+    <div class="wx-days" role="list" aria-label="Five-day forecast">
+      <div class="wx-day" role="listitem"><div class="d">Wed</div><div class="t">91°&nbsp;/&nbsp;74°</div><div class="c">Sunny</div></div>
+      <div class="wx-day" role="listitem"><div class="d">Thu</div><div class="t">88°&nbsp;/&nbsp;73°</div><div class="c">T-storms</div></div>
+      <div class="wx-day" role="listitem"><div class="d">Fri</div><div class="t">83°&nbsp;/&nbsp;70°</div><div class="c">Showers</div></div>
+      <div class="wx-day" role="listitem"><div class="d">Sat</div><div class="t">85°&nbsp;/&nbsp;69°</div><div class="c">Partly cloudy</div></div>
+      <div class="wx-day" role="listitem"><div class="d">Sun</div><div class="t">87°&nbsp;/&nbsp;71°</div><div class="c">Sunny</div></div>
+    </div>
+    <a class="wx-alert" href="#">Heat advisory · District of Columbia · until 8&nbsp;PM →</a>
+  </div>
+</section>
+
+<!-- ═══════════ RECIPES — the supper table ═══════════ -->
+<section class="block block-recipes wrap" style="--hue:var(--c-recipes)" aria-labelledby="h-rec">
+  <div class="sechead">
+    <h2 id="h-rec">Recipes · The Supper Table</h2>
+    <div class="rule" aria-hidden="true"></div>
+    <a class="more" href="#">More recipes →</a>
+  </div>
+  <div class="grid-cards recipes">
+    <article class="card k-recipes">
+      <a class="media r43" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-food1"></span></a>
+      <p class="kicker k-recipes">Weeknight</p>
+      <h3 class="card-hed"><a href="#">One-pot lemon orzo with white beans and a lot of dill</a></h3>
+      <p class="recipe-meta"><span><b>30 min</b></span><span>Serves 4</span><span>One pot</span></p>
+      <p class="card-meta"><span class="src">Budget Bytes</span></p>
+    </article>
+    <article class="card k-recipes">
+      <a class="media r43" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-food2"></span></a>
+      <p class="kicker k-recipes">Dessert</p>
+      <h3 class="card-hed"><a href="#">Peach cobbler with brown-butter biscuits, while peaches last</a></h3>
+      <p class="recipe-meta"><span><b>1 hr 10</b></span><span>Serves 8</span><span>Bake</span></p>
+      <p class="card-meta"><span class="src">Smitten Kitchen</span></p>
+    </article>
+    <article class="card k-recipes">
+      <a class="media r43" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-food3"></span></a>
+      <p class="kicker k-recipes">Salad</p>
+      <h3 class="card-hed"><a href="#">Charred corn salad with feta, lime, and too much basil</a></h3>
+      <p class="recipe-meta"><span><b>25 min</b></span><span>Serves 4</span><span>Grill or skillet</span></p>
+      <p class="card-meta"><span class="src">Love &amp; Lemons</span></p>
+    </article>
+    <article class="card k-recipes">
+      <a class="media r43" href="#" tabindex="-1" aria-hidden="true"><span class="ph ph-food4"></span></a>
+      <p class="kicker k-recipes">Sunday project</p>
+      <h3 class="card-hed"><a href="#">Skillet chicken with summer squash and crispy shallots</a></h3>
+      <p class="recipe-meta"><span><b>50 min</b></span><span>Serves 4</span><span>One skillet</span></p>
+      <p class="card-meta"><span class="src">Budget Bytes</span></p>
+    </article>
+  </div>
+</section>
+
+<div class="wrap"><div class="ad ad-mid" aria-label="Advertisement slot">Advertisement · 970×250</div></div>
+
+<!-- ═══════════ MARKETS — low on the page, quiet on purpose ═══════════ -->
+<section class="markets wrap" aria-labelledby="h-mkt">
+  <div class="markets-head">
+    <h2 id="h-mkt">Markets</h2>
+    <span class="after">after the close</span>
+    <div class="rule" aria-hidden="true"></div>
+  </div>
+  <div class="markets-grid">
+    <article class="card mkt-card k-markets">
+      <p class="kicker k-markets">Economy</p>
+      <h3 class="card-hed"><a href="#">Fed minutes show a committee split three ways on a September cut</a></h3>
+      <p class="card-meta"><span class="src">ABC News</span> · 4:15&nbsp;PM</p>
+    </article>
+    <article class="card mkt-card k-markets">
+      <p class="kicker k-markets">Energy</p>
+      <h3 class="card-hed"><a href="#">Oil settles lower as Gulf shipping resumes ahead of Elena</a></h3>
+      <p class="card-meta"><span class="src">UPI</span> · 3:52&nbsp;PM</p>
+    </article>
+    <div class="idx" aria-label="Index summary">
+      <div><span class="n">S&amp;P 500</span> <span class="v">6,412.08</span> <span class="chg up">+0.4%</span></div>
+      <div><span class="n">BTC/USD</span> <span class="v">96,140</span> <span class="chg down">−1.2%</span></div>
+      <div><span class="n">Gold</span> <span class="v">2,681.50</span> <span class="chg up">+0.6%</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer>
+  <div class="foot-meridian" aria-hidden="true"></div>
+  <div class="wrap foot-grid">
+    <div class="foot-brand">
+      <p class="wordmark">The Evening Brief<span class="stop" style="color:var(--lamplight)">.</span></p>
+      <p>We aggregate the headline, the feed-provided summary, and the source link. Every full article remains with — and is linked to — its original publisher.</p>
+    </div>
+    <div class="foot-col">
+      <h3>Sections</h3>
+      <ul>
+        <li><a href="#">U.S. news</a></li>
+        <li><a href="#">International</a></li>
+        <li><a href="#">World wire</a></li>
+        <li><a href="#">Weather</a></li>
+        <li><a href="#">Recipes</a></li>
+        <li><a href="#">Markets</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h3>Our sources</h3>
+      <p class="plain">ABC News · CBS News · NBC News · The New York Times · NPR · PBS NewsHour · UPI · SRN News · WTOP · KTLA · BBC News · The Guardian · Al Jazeera · DW · Sky News · The Washington Post · KFF Health News · Budget Bytes · Smitten Kitchen · Love &amp; Lemons</p>
+    </div>
+    <div class="foot-col">
+      <h3>The Brief</h3>
+      <ul>
+        <li><a href="#">About this edition</a></li>
+        <li><a href="#">Our RSS feed</a></li>
+        <li><a href="#">Corrections</a></li>
+        <li><a href="#">Contact</a></li>
+        <li><a href="#">Privacy</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap foot-legal">
+    <span>© 2026 The Evening Brief. Headlines and summaries remain the property of their publishers.</span>
+    <span>Set in Newsreader and Archivo · Published at dusk, updated through the evening.</span>
+  </div>
+</footer>
+
+<script>
+/* progressive enhancement only — the page renders complete without it */
+(function(){
+  function tick(){
+    var d=new Date(),h=d.getHours(),m=('0'+d.getMinutes()).slice(-2);
+    var ap=h>=12?'PM':'AM',hh=h%12||12;
+    var el=document.getElementById('clock');
+    if(el)el.textContent=hh+':'+m+' '+ap;
+  }
+  tick();setInterval(tick,15000);
+})();
+</script>
+</body>
+</html>

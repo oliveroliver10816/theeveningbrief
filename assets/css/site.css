@@ -1,0 +1,398 @@
+/* ==========================================================================
+   The production design system — synthesis of the three directions.
+   Winner: AUTHORITY (evening broadsheet). Grafts: SIGNAL's flat class-driven
+   card grammar + searchbar + time-first sluglines; EVENING's deep-paper
+   text-only fallback card.
+   Contract for the renderer: see docs/design/FINAL.md. All components are
+   flat lists of cards — no column wrappers, no nth-child structure, so
+   card() can emit the same string anywhere.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..600&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+/* ============ tokens ============ */
+:root{
+  /* colour — light (all pairs AA at used sizes; measured in dir-authority) */
+  --paper:#FBFAF7;        /* page */
+  --paper-2:#F3F1EA;      /* bands: weather, markets, ad rails */
+  --paper-deep:#EDE9DE;   /* text-only fallback card (EVENING graft) */
+  --well:#EFECE4;         /* image placeholder ground */
+  --ink:#171511;          /* 15.4:1 on paper */
+  --ink-2:#55524B;        /* 7.5:1 on paper */
+  --rule:#DAD6CC;         /* hairlines, non-text */
+  --rule-strong:#171511;  /* 2px section bars + oxford */
+  --accent:#0E5A54;       /* teal — section labels, kickers, focus. 7.8:1 */
+  --alert:#B0271E;        /* red — breaking, NWS, markets down. 6.4:1 */
+  --up:#1E6B33;           /* markets up. 5.8:1 */
+  --chip-bg:#B0271E;      /* BREAKING chip, constant across modes */
+  --chip-ink:#FFFFFF;     /* 6.7:1 on chip-bg */
+
+  /* type — three faces, three jobs */
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"Libre Franklin","Franklin Gothic Medium","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+
+  /* type scale */
+  --fs-meta:12px;                        /* source lines, credits */
+  --fs-ui:13px;                          /* nav, labels, buttons */
+  --fs-body:18px;                        /* summaries, body */
+  --fs-hed-s:19px;                       /* small / wire headlines */
+  --fs-hed-m:22px;                       /* medium card headline */
+  --fs-hed-l:clamp(26px,1.7vw,34px);     /* large card headline */
+  --fs-hed-lead:clamp(32px,2.6vw,64px);  /* hero lead headline */
+  --fs-wordmark:clamp(40px,4.6vw,92px);
+
+  /* spacing — 4px scale */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --s6:32px; --s7:44px; --s8:56px; --s9:96px;
+  --pad:clamp(16px,2.4vw,44px);          /* page gutter; no max-width anywhere */
+
+  /* radii + shadows — a broadsheet is square and flat by decision */
+  --radius:0;
+  --shadow-none:none;
+  --shadow-lift:0 1px 0 rgba(23,21,17,.05),0 10px 26px -20px rgba(23,21,17,.35);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#141519; --paper-2:#1A1C21; --paper-deep:#1E2026; --well:#1E2026;
+    --ink:#E9E7E1;          /* 13.5:1 */
+    --ink-2:#A9A69E;        /* 7.6:1 */
+    --rule:#2C2E35; --rule-strong:#E9E7E1;
+    --accent:#6FBFB6;       /* 8.6:1 */
+    --alert:#F2695C;        /* 6.1:1 */
+    --up:#7FD394;           /* 9.3:1 */
+    --shadow-lift:0 1px 0 rgba(0,0,0,.4),0 10px 26px -20px rgba(0,0,0,.7);
+  }
+}
+
+/* ============ base ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper);color:var(--ink);font:400 var(--fs-body)/1.6 var(--serif);font-optical-sizing:auto}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+ul,ol{list-style:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::selection{background:var(--accent);color:var(--paper)}
+.wrap{padding-inline:var(--pad)}
+.skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--paper);padding:12px 20px;font:600 14px var(--sans);z-index:99}
+.skip:focus{left:0}
+
+/* shared text roles */
+.kicker{font:700 11px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.card-src{font:500 var(--fs-meta)/1.5 var(--sans);color:var(--ink-2);letter-spacing:.02em}
+.card-src .t{font:400 11px var(--mono);font-variant-numeric:tabular-nums}
+.card-sum{font-size:var(--fs-body);line-height:1.55;color:var(--ink-2)}
+.chip{display:inline-block;font:700 10px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;background:var(--chip-bg);color:var(--chip-ink);padding:4px 7px 3px}
+.card-out{font:600 var(--fs-meta)/1.4 var(--sans);letter-spacing:.04em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.oxford{border-top:3px solid var(--rule-strong);border-bottom:1px solid var(--rule-strong);height:7px}
+
+/* ============ ticker (headlines, never markets) ============ */
+.ticker{display:flex;align-items:stretch;border-bottom:1px solid var(--rule);background:var(--paper)}
+.ticker-bug{display:flex;align-items:center;gap:9px;padding-left:var(--pad);padding-right:18px;border-right:1px solid var(--rule);font:700 11px var(--sans);letter-spacing:.16em;color:var(--accent);white-space:nowrap}
+.ticker-bug .dot{width:7px;height:7px;border-radius:50%;background:var(--alert)}
+.ticker-vp{overflow:hidden;flex:1;display:flex}
+.ticker-track{display:flex;flex:none;animation:tick 80s linear infinite}
+.ticker:hover .ticker-track,.ticker:focus-within .ticker-track{animation-play-state:paused}
+.ticker-track ul{display:flex;flex:none}
+.ticker-track li a{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 20px;font:500 15px var(--sans);white-space:nowrap}
+.ticker-track li .s{font:600 10px var(--sans);letter-spacing:.1em;color:var(--ink-2);text-transform:uppercase}
+.ticker-track li+li{border-left:1px solid var(--rule)}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* ============ masthead + edition plate ============ */
+.masthead{padding-block:30px 24px}
+.masthead-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:24px}
+.masthead-side{font:500 var(--fs-meta)/1.8 var(--sans);color:var(--ink-2);letter-spacing:.05em;text-transform:uppercase}
+.masthead-side strong{color:var(--ink);font-weight:600}
+.masthead-side .m{font:400 11px var(--mono);text-transform:none;letter-spacing:0}
+.masthead-brand{text-align:center}
+.masthead-brand .wordmark{font:700 var(--fs-wordmark)/.95 var(--serif);letter-spacing:-.015em}
+.masthead-brand .tag{margin-top:12px;font:600 var(--fs-meta)/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--ink-2)}
+.masthead-plate{justify-self:end;text-align:center;border-top:1px solid var(--rule-strong);border-bottom:1px solid var(--rule-strong);padding:12px 22px 10px;min-width:232px}
+.masthead-plate .ed{font:700 10px/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--accent)}
+.masthead-plate .stars{font-size:13px;letter-spacing:.4em;margin:6px 0 4px;color:var(--ink)}
+.masthead-plate .clock{font:500 26px/1.25 var(--mono);font-variant-numeric:tabular-nums}
+.masthead-plate .no{font:400 11px/1.7 var(--mono);color:var(--ink-2)}
+
+/* ============ nav ============ */
+.nav{border-bottom:1px solid var(--rule)}
+.nav ul{display:flex;align-items:stretch;overflow-x:auto;padding-inline:calc(var(--pad) - 14px);scrollbar-width:none}
+.nav ul::-webkit-scrollbar{display:none}
+.nav a{display:flex;align-items:center;min-height:47px;padding:0 clamp(10px,.9vw,19px);font:600 var(--fs-ui)/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.nav a.on{box-shadow:inset 0 -3px var(--ink)}
+.nav li.push{margin-left:auto}
+.nav li.push a{color:var(--ink-2)}
+
+/* ============ searchbar (SIGNAL graft) ============ */
+.searchbar{display:flex;align-items:stretch;max-width:520px}
+.searchbar input{flex:1;min-width:0;height:48px;border:1px solid var(--rule-strong);border-right:0;background:var(--paper);color:var(--ink);padding:0 var(--s4);font:400 16px var(--sans)}
+.searchbar input::placeholder{color:var(--ink-2)}
+.searchbar button{height:48px;padding:0 var(--s5);border:1px solid var(--rule-strong);background:var(--ink);color:var(--paper);font:700 var(--fs-ui) var(--sans);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.searchbar button:hover{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+
+/* ============ card — one component, five sizes ============
+   Flat grammar (SIGNAL graft): every card is self-contained; sizes are
+   classes, never position-dependent selectors. Skeleton in FINAL.md.   */
+.card{position:relative;min-width:0}
+.card-hed a::after{content:"";position:absolute;inset:0}   /* whole card tappable */
+.card .card-out,.card .card-src a{position:relative;z-index:1}
+.card-hed{font:700 var(--fs-hed-m)/1.2 var(--serif);margin:4px 0 8px}
+.card .kicker{display:block}
+.card .card-src{margin-top:8px}
+.card-sum{margin-top:2px}
+
+/* image well: fixed-ratio crop box; odd publisher ratios can never distort
+   or shift layout. The <img> carries width/height attrs; height:100% +
+   object-fit:cover inside the box (global height:auto covers bare imgs). */
+.card-media{position:relative;display:block;overflow:hidden;background:var(--well);border:1px solid var(--rule);margin:0 0 12px;aspect-ratio:3/2}
+.card-media img{width:100%;height:100%;object-fit:cover}
+.card-media .credit{position:absolute;right:0;bottom:0;font:400 10px/1 var(--mono);color:var(--ink-2);background:var(--paper);padding:5px 8px;border-top:1px solid var(--rule);border-left:1px solid var(--rule)}
+
+/* sizes */
+.card--lead .card-hed{font:700 var(--fs-hed-lead)/1.04 var(--serif);letter-spacing:-.01em}
+.card--lead .card-media{aspect-ratio:2/1;margin:20px 0 16px}
+.card--lead .card-sum{font-size:20px;max-width:72ch}
+.card--lead .card-out{display:inline-block;margin-top:10px}
+.card--large .card-hed{font-size:var(--fs-hed-l);line-height:1.12}
+.card--medium .card-hed{font-size:var(--fs-hed-m)}
+.card--small .card-hed{font-size:var(--fs-hed-s);line-height:1.3;margin-bottom:4px}
+.card--small .card-media{display:none}   /* small = headline + source only */
+.card--small .card-sum{display:none}
+
+/* text-only: the designed no-image state (EVENING graft). The renderer
+   emits it for imageless rows; img onerror upgrades any card to it live. */
+.card--text{background:var(--paper-deep);border-top:4px solid var(--accent);padding:var(--s4) var(--s4) var(--s3);box-shadow:var(--shadow-lift)}
+.card--text .card-media{display:none}
+.card--text .card-hed{font-size:var(--fs-hed-m)}
+.card--text.card--lead .card-hed{font-size:var(--fs-hed-lead)}
+.card--text.card--small{background:none;border-top:0;padding:0;box-shadow:var(--shadow-none)}
+
+/* breaking / live kicker line on the lead */
+.kline{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+
+/* ============ hero: rail (2) | subs (4) | lead top-right (6) ============ */
+.hero{display:grid;grid-template-columns:2fr 4fr 6fr;grid-template-areas:"rail subs lead";padding-block:30px 40px}
+.hero-lead{grid-area:lead;padding-left:32px;border-left:1px solid var(--rule)}
+.hero-subs{grid-area:subs;display:grid;grid-template-columns:1fr 1fr;gap:22px;border-right:1px solid var(--rule);padding-right:22px;margin-right:0;align-content:start;padding-left:22px}
+.hero-subs>.card{border-top:1px solid var(--rule);padding-top:16px}
+.hero-subs>.card:nth-child(-n+2){border-top:0;padding-top:0}
+.hero-rail{grid-area:rail;padding-right:26px}
+.rail-head{border-top:2px solid var(--rule-strong);padding-top:10px}
+.rail-head .kicker{font-size:13px}
+.rail-head .rail-note{font:italic 400 15px/1.5 var(--serif);color:var(--ink-2);margin-top:4px}
+.rail-list{margin-top:8px}
+.rail-list li{border-top:1px solid var(--rule)}
+.rail-list li:first-child{border-top:0}
+.rail-list a{display:flex;gap:14px;align-items:baseline;min-height:44px;padding:11px 0}
+.rail-list .n{font:500 15px/1 var(--mono);color:var(--accent);min-width:1.2em;text-align:right}
+.rail-list .h{font:600 18px/1.35 var(--serif)}
+.rail-list .s{display:block;font:600 10px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-top:5px}
+.rail-foot{border-top:1px solid var(--rule);padding-top:2px}
+.rail-foot a{display:inline-flex;align-items:center;min-height:44px;font:600 var(--fs-meta) var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+
+/* ============ block: section header + flat card grid ============ */
+.block{margin-top:var(--s7)}
+.block-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-top:2px solid var(--rule-strong);padding-top:10px;margin-bottom:20px}
+.block-label{font:700 14px/1.2 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.block-note{font:italic 400 15px/1.4 var(--serif);color:var(--ink-2)}
+.block-more{display:inline-flex;align-items:center;min-height:44px;font:600 var(--fs-meta)/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+
+/* flat grids — a hairline sits above every card, so any card count and any
+   column count resolves cleanly with zero renderer logic */
+.block-grid{display:grid;gap:0 28px;grid-template-columns:repeat(4,1fr)}
+.block-grid>.card{border-top:1px solid var(--rule);padding-block:16px 18px}
+.block-grid>.card--text{margin-top:16px;padding-top:var(--s4);border-top-color:var(--accent)}
+.block-grid--3{grid-template-columns:repeat(3,1fr)}
+.block-grid--2{grid-template-columns:repeat(2,1fr)}
+.block-grid>.card--large{grid-row:span 2}
+
+/* wire variant: dense, text-first rows (the World desk) */
+.block-grid--wire>.card .card-hed{font-size:var(--fs-hed-s);line-height:1.3;margin:4px 0 6px}
+.block-grid--wire>.card .card-media,.block-grid--wire>.card .card-sum{display:none}
+
+/* ============ adslot — height reserved, zero CLS ============ */
+.adslot{background:var(--paper-2);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-top:var(--s7);padding:18px var(--pad)}
+.adslot-frame{margin-inline:auto;width:min(970px,100%);min-height:250px;border:1px solid var(--rule);display:grid;place-content:center;gap:6px;text-align:center}
+.adslot-label{font:600 10px/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;color:var(--ink-2)}
+.adslot-dim{font:400 11px/1 var(--mono);color:var(--ink-2)}
+.adslot--box{background:none;border:0;margin:0;padding:0}
+.adslot--box .adslot-frame{width:min(300px,100%);min-height:250px;background:var(--paper-2)}
+@media (max-width:768px){.adslot .adslot-frame{min-height:110px}.adslot--box .adslot-frame{min-height:250px}}
+
+/* ============ weather-strip ============ */
+.weather-strip{background:var(--paper-2);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-top:var(--s7);padding-block:20px}
+.weather-row{display:flex;align-items:center;gap:clamp(20px,2.6vw,44px);flex-wrap:wrap}
+.wx-now{display:flex;align-items:center;gap:18px}
+.wx-temp{font:500 42px/1 var(--mono);font-variant-numeric:tabular-nums}
+.wx-cond{font:600 15px/1.4 var(--sans);display:block}
+.wx-hilo{display:block;font:400 13px var(--mono);color:var(--ink-2)}
+.wx-alert{font:500 15px/1.5 var(--sans);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wx-alert a{color:var(--alert);text-decoration:underline;text-underline-offset:3px}
+.wx-days{display:flex;margin-left:auto}
+.wx-days li{border-left:1px solid var(--rule);padding:2px 18px}
+.wx-days .d{font:700 11px/1.6 var(--sans);letter-spacing:.1em;color:var(--ink-2);display:block}
+.wx-days .n2{font:500 15px/1.6 var(--mono);font-variant-numeric:tabular-nums;display:block}
+.wx-days .c{font:400 12px/1.5 var(--sans);color:var(--ink-2);display:block}
+.weather-strip .block-more{margin-left:0}
+
+/* ============ recipe-card ============ */
+.recipe-card .card-media{aspect-ratio:4/3}
+.recipe-card .recipe-meta{font:500 var(--fs-meta)/1.5 var(--sans);color:var(--ink-2);margin-top:4px}
+.recipe-card .recipe-meta b{color:var(--ink);font-weight:600}
+
+/* ============ markets-strip — once, low, quiet ============ */
+.markets-strip{background:var(--paper-2);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-top:var(--s7);padding-block:20px}
+.mk-row{display:flex;align-items:center;gap:clamp(18px,2vw,36px);flex-wrap:wrap}
+.mk-label{font:700 var(--fs-meta)/1.4 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
+.mk-quotes{display:flex;flex-wrap:wrap;gap:8px 28px}
+.mk-quotes li{font:500 14px/1.5 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mk-quotes .nm{font:600 11px var(--sans);letter-spacing:.08em;color:var(--ink-2);margin-right:6px}
+.up{color:var(--up)}
+.down{color:var(--alert)}
+.mk-fine{font:400 11px var(--mono);color:var(--ink-2);margin-left:auto;white-space:nowrap}
+.mk-cards{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:16px}
+.mk-cards>.card{border-top:1px solid var(--rule);padding-top:14px}
+.mk-cards .card-hed{font:600 20px/1.25 var(--serif)}
+
+/* ============ pagination ============ */
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:var(--s7);border-top:1px solid var(--rule);padding-top:var(--s4)}
+.pagination .pg{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 12px;font:500 14px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.pagination a.pg:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.pagination .pg-now{color:var(--paper);background:var(--ink);font-weight:600}
+.pagination .pg-prev,.pagination .pg-next{font:600 var(--fs-meta) var(--sans);letter-spacing:.08em;text-transform:uppercase}
+.pagination .pg-gap{min-width:24px;color:var(--ink-2)}
+
+/* ============ footer ============ */
+.footer{margin-top:var(--s8)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1.2fr 1fr 1fr;gap:36px;padding-block:36px}
+.footer-brand .fbrand{font:700 30px/1.1 var(--serif);letter-spacing:-.01em}
+.footer-brand .standing{font-size:var(--fs-body);line-height:1.55;color:var(--ink-2);margin-top:12px;max-width:44ch}
+.footer-brand .m{font:400 var(--fs-meta)/2 var(--mono);color:var(--ink-2);margin-top:12px}
+.footer-grid h5{font:700 11px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--accent);border-top:2px solid var(--rule-strong);padding-top:10px;margin-bottom:6px}
+.footer-grid ul a{display:inline-flex;align-items:center;min-height:44px;font:500 14px var(--sans);color:var(--ink-2)}
+.footer-grid ul a:hover{color:var(--ink)}
+.footer-grid .two{columns:2;column-gap:28px}
+.footer-bar{border-top:1px solid var(--rule);padding-block:16px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:400 var(--fs-meta)/1.8 var(--sans);color:var(--ink-2)}
+.footer-bar .m{font-family:var(--mono);font-size:11px}
+
+/* ============ responsive ============ */
+/* ultrawide first-class: 2560px spends width on columns, not margins */
+@media (min-width:1900px){
+  .block-grid--6up{grid-template-columns:repeat(6,1fr)}
+}
+@media (max-width:1680px){
+  .hero{grid-template-columns:5fr 7fr;grid-template-areas:"subs lead" "rail rail"}
+  .hero-subs{border-right:0;padding-left:0}
+  .hero-rail{border-top:1px solid var(--rule);margin-top:28px;padding:20px 0 0}
+  .rail-list{display:grid;grid-template-columns:repeat(3,1fr);column-gap:32px}
+  .rail-list li:nth-child(-n+3){border-top:0}
+}
+@media (max-width:1240px){
+  .block-grid,.block-grid--3{grid-template-columns:1fr 1fr}
+  .block-grid>.card--large{grid-row:auto}
+  .wx-days{margin-left:0}
+  .wx-days li:first-child{border-left:0;padding-left:0}
+}
+@media (max-width:1023px){
+  .hero{grid-template-columns:1fr;grid-template-areas:"lead" "subs" "rail"}
+  .hero-lead{padding-left:0;border-left:0}
+  .hero-subs{border-top:1px solid var(--rule);margin-top:26px;padding-top:22px;padding-right:0}
+  .rail-list{grid-template-columns:1fr 1fr}
+  .rail-list li:nth-child(-n+3){border-top:1px solid var(--rule)}
+  .rail-list li:nth-child(-n+2){border-top:0}
+  .masthead-grid{grid-template-columns:1fr;justify-items:center;text-align:center;gap:16px}
+  .masthead-side{order:2}
+  .masthead-plate{order:3;justify-self:center}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:24px}
+  .footer-grid>.footer-brand{grid-column:1 / -1}
+}
+@media (max-width:640px){
+  .hero-subs{grid-template-columns:1fr}
+  .hero-subs>.card{border-top:1px solid var(--rule);padding-top:16px}
+  .hero-subs>.card:first-child{border-top:0;padding-top:0}
+  .block-grid,.block-grid--3,.block-grid--2{grid-template-columns:1fr}
+  .rail-list{grid-template-columns:1fr}
+  .rail-list li{border-top:1px solid var(--rule)}
+  .rail-list li:first-child{border-top:0}
+  .mk-cards{grid-template-columns:1fr}
+  .wx-days{width:100%;display:grid;grid-template-columns:repeat(5,1fr)}
+  .wx-days li{padding:2px 8px}
+  .wx-days li:first-child{border-left:0;padding-left:0}
+  .card--lead .card-hed{font-size:clamp(30px,8vw,40px)}
+  .wx-temp{font-size:34px}
+  .searchbar{max-width:none}
+}
+
+/* ============ reduced motion ============ */
+@media (prefers-reduced-motion:reduce){
+  .ticker-track{animation:none}
+  .ticker-vp{overflow-x:auto}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+
+/* ==========================================================================
+   RENDERER EXTENSION — app/Render.php + assets/js/app.js only.
+   Nothing above this line is modified. Every value below either (a) restates
+   a value the designer already chose, or (b) styles a control the design
+   system has no class for. No colour, size or spacing decision is changed.
+   ========================================================================== */
+
+/* --- theme toggle: manual override of prefers-color-scheme --------------
+   design.css defines the dark palette under @media(prefers-color-scheme:dark)
+   only, so an explicit choice has nothing to hook. These two blocks repeat
+   the SAME token values under [data-theme] so the toggle wins in both
+   directions. Specificity (0,2,0) beats the bare :root (0,1,0) in the media
+   query, so an explicit "light" survives a dark OS.                        */
+:root[data-theme="light"]{
+  --paper:#FBFAF7; --paper-2:#F3F1EA; --paper-deep:#EDE9DE; --well:#EFECE4;
+  --ink:#171511; --ink-2:#55524B;
+  --rule:#DAD6CC; --rule-strong:#171511;
+  --accent:#0E5A54; --alert:#B0271E; --up:#1E6B33;
+  --chip-bg:#B0271E; --chip-ink:#FFFFFF;
+  --shadow-lift:0 1px 0 rgba(23,21,17,.05),0 10px 26px -20px rgba(23,21,17,.35);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#141519; --paper-2:#1A1C21; --paper-deep:#1E2026; --well:#1E2026;
+  --ink:#E9E7E1; --ink-2:#A9A69E;
+  --rule:#2C2E35; --rule-strong:#E9E7E1;
+  --accent:#6FBFB6; --alert:#F2695C; --up:#7FD394;
+  --chip-bg:#B0271E; --chip-ink:#FFFFFF;
+  --shadow-lift:0 1px 0 rgba(0,0,0,.4),0 10px 26px -20px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+/* the toggle itself sits in the nav tail; it borrows .nav a's metrics
+   exactly so the row keeps one rhythm and the 44px target is preserved */
+.theme-toggle{display:flex;align-items:center;gap:8px;min-height:47px;padding:0 clamp(10px,.9vw,19px);
+  background:none;border:0;cursor:pointer;color:var(--ink-2);
+  font:600 var(--fs-ui)/1 var(--sans);letter-spacing:.1em;text-transform:uppercase}
+.theme-toggle:hover{color:var(--ink)}
+.theme-toggle .tt-icon{font:400 14px/1 var(--mono)}
+.theme-toggle .tt-text{font:inherit}
+/* the control is useless without JS, so it stays out of the row until app.js
+   marks it ready — and .tt-ready is a class, not [hidden], because .nav li's
+   own display would beat the UA's [hidden]{display:none} */
+.nav li.tt{display:none}
+.nav li.tt.tt-ready{display:flex}
+
+/* --- ad slots: per-slot geometry from config.ads.slots ------------------
+   The designer's numbers are the defaults below (970x250 billboard, 110px
+   on phones, 300x250 box). A configured slot of another size only fills in
+   --ad-w/--ad-h, so a 728x90 unit reserves 90px instead of 250 and enabling
+   ads still shifts nothing.                                                */
+.adslot{--ad-w:970px;--ad-h:250px}
+.adslot .adslot-frame{width:min(var(--ad-w),100%);min-height:var(--ad-h)}
+.adslot--box{--ad-w:300px;--ad-h:250px}
+@media (max-width:768px){
+  .adslot .adslot-frame{min-height:min(var(--ad-h),110px)}
+  .adslot--box .adslot-frame{min-height:var(--ad-h)}
+}
+/* the empty mount a real ad tag fills, inside the already-reserved frame */
+.adslot-mount{display:block;width:100%;min-height:inherit}
+
+/* --- search page furniture ---------------------------------------------- */
+.block > .searchbar{margin-bottom:var(--s5)}
+.result-note{font:italic 400 16px/1.5 var(--serif);color:var(--ink-2);margin-bottom:var(--s4)}

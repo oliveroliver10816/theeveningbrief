@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Half a feed</title>
+    <item>
+      <title>This item never closes
+      <link>https://example.org/a</link>
+    </item>
+    <item>
+      <title>Unescaped ampersand & bare < bracket</title>
+      <link>https://example.org/b</link>
+  </channel>

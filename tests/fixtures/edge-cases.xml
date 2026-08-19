@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Edge cases &amp; oddities</title>
+    <link>https://example.org/</link>
+    <item>
+      <title>No date at all on this one</title>
+      <link>https://example.org/no-date</link>
+      <description>An item with no pubDate, no dc:date and no updated element.</description>
+    </item>
+    <item>
+      <title>Unparseable date</title>
+      <link>https://example.org/bad-date</link>
+      <pubDate>not a date at all</pubDate>
+      <dc:date>32 Foo 20XX</dc:date>
+    </item>
+    <item>
+      <title>Epoch zero, which some broken feeds emit</title>
+      <link>https://example.org/epoch-zero</link>
+      <pubDate>Thu, 01 Jan 1970 00:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Date from the year 3000</title>
+      <link>https://example.org/future</link>
+      <pubDate>Mon, 01 Jan 3000 00:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Protocol-relative image and a video rendition</title>
+      <link>https://example.org/proto</link>
+      <media:content url="https://cdn.example.org/clip.mp4" type="video/mp4" width="1920" />
+      <media:thumbnail url="//cdn.example.org/thumb.jpg" width="600" />
+      <pubDate>Tue, 18 Aug 2026 09:30:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Beacon only</title>
+      <link>https://example.org/beacon</link>
+      <content:encoded><![CDATA[<p>Body text.</p><img src="undefined" alt=""/><img src="https://media.example.org/include/images/tracking/rss-pixel.png?story=1" width="1" height="1" />]]></content:encoded>
+      <pubDate>Tue, 18 Aug 2026 09:31:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Entities &amp; a very long summary that must be trimmed on a word boundary without leaving half of an escaped ampersand dangling at the very end of the sentence</title>
+      <link>https://example.org/entities</link>
+      <description>&lt;p&gt;Caf&#233; owners in M&#252;nchen said &amp;ldquo;we will not budge&amp;rdquo; &amp;mdash; and the caf&#233;&#8217;s co-op agreed. AT&amp;amp;T and Johnson &amp;amp; Johnson both declined to comment on the record for this story, which continues for some length so that the trimmer has something real to cut into on a word boundary rather than mid-word.&lt;/p&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 09:32:00 +0000</pubDate>
+      <author>newsroom@example.org (Dana Reyes)</author>
+    </item>
+    <item>
+      <title>No link, so it is not a story</title>
+      <description>Dropped: nothing to link to.</description>
+    </item>
+    <item>
+      <link>https://example.org/no-title</link>
+      <description>Dropped: no headline.</description>
+    </item>
+    <item>
+      <title>Bare email author must not leak</title>
+      <link>https://example.org/email-author</link>
+      <author>tips@example.org</author>
+      <pubDate>Tue, 18 Aug 2026 09:33:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

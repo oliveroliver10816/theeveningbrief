@@ -1,0 +1,885 @@
+<!doctype html>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  DESIGN DIRECTION "SIGNAL" — The Evening Brief
+  High-density, terminal-adjacent briefing wire. Premium, not a dashboard.
+  ═══════════════════════════════════════════════════════════════════════════
+
+  RATIONALE
+
+  Typefaces (Google Fonts, real fallbacks — page degrades cleanly offline):
+  · Archivo (variable 400–800) — headlines AND body. One grotesque family,
+    worked hard: 750 weight / -0.015em tracking / 1.06 leading for display,
+    400/1.55 for summaries. A single family with real range reads as an
+    editorial decision; a "display serif + UI sans" pairing reads as a theme.
+    Fallback: "Helvetica Neue", Arial, sans-serif.
+  · Spline Sans Mono (400–600) — the WIRE APPARATUS ONLY: timestamps, source
+    tags, section kickers, ticker, index numerals, weather, markets, captions.
+    Mono is metadata, never body copy — that split is what keeps the density
+    premium instead of developer-dashboard.
+    Fallback: ui-monospace, "SF Mono", Menlo, Consolas, monospace.
+
+  Colour tokens (every pair measured; small-text AA = 4.5:1 minimum):
+    LIGHT  --bg #F3F1EA (warm newsprint, not white)  --ink #17150F (16.2:1)
+           --ink-2 #514C3F (7.6:1)  --accent #B93A00 signal orange (5.1:1;
+           4.6:1 on --bg-alt #E9E6DB)  --rule #D6D1C2 (non-text hairlines)
+    DARK   --bg #121110  --ink #EBE7DC (15.3:1)  --ink-2 #A9A294 (7.4:1)
+           --accent #FF7A45 (7.3:1)  --rule #2F2D27
+    BAND   (theme-invariant, the signature) #15130E — the headline ticker and
+           the footer are ALWAYS terminal-dark in both themes, bookending the
+           page like the top and bottom of a wire printout. --band-ink #F3F1EA
+           (16.4:1) --band-dim #B5AE9E (8.4:1) accent on band 7.2:1.
+    ONE saturated accent. No greens, no reds for markets, no gradient anywhere.
+
+  Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 (--s1…--s8).
+  Radius: 0. Everywhere. Cards are hairline-ruled rows and columns, never
+  boxes with shadows. Density comes from tight leading + the rule grid, not
+  from small type: body stays ≥18px, tap targets ≥44px, metadata is 12.5–14px
+  mono that passes AA at its size.
+
+  What makes SIGNAL different from a generic news template:
+  1. The slugline. Every story carries a mono wire line — "18:26 · NBC NEWS ·
+     US" — before the headline. Time is a first-class citizen on every card.
+  2. Terminal-dark band bookends (ticker + footer) that never change with the
+     theme; the page between them breathes in newsprint.
+  3. The LATEST rail: a 10-row timestamped wire column beside the hero — the
+     "live feel" is carried by typography and rhythm, not by widgets.
+  4. Full-bleed grid at 2560px: rail + lead + secondaries in one 3-zone hero,
+     6-up international row, no dead margins — padding scales with vw.
+  5. Missing images are a DESIGNED state, not a failure: text-only cards get a
+     3px accent top-rule and a heavier headline; the World block runs entirely
+     text-only on purpose. Image frames are fixed-ratio (aspect-ratio +
+     object-fit:cover) so unpredictable publisher CDN ratios never distort or
+     shift layout; real <img> tags ship width/height attributes AND height:auto.
+  6. Ad slots are reserved, hairline-dashed, labelled in mono, fixed min-height
+     — zero CLS by construction.
+  7. Markets are demoted by design: one quiet strip, last, after the recipes.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Direction SIGNAL — The Evening Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&family=Spline+Sans+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+  /* ─── tokens ────────────────────────────────────────────────────────── */
+  :root{
+    --bg:#F3F1EA; --bg-alt:#E9E6DB; --ink:#17150F; --ink-2:#514C3F;
+    --rule:#D6D1C2; --rule-strong:#17150F;
+    --accent:#B93A00; --on-accent:#FFF8F2;
+    --ph-bg:#E2DECF; --ph-line:rgba(23,21,15,.07); --ph-ink:#514C3F;
+    --band:#15130E; --band-ink:#F3F1EA; --band-dim:#B5AE9E; --band-accent:#FF7A45;
+    --band-rule:#2E2B22;
+    --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --mono:"Spline Sans Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px;
+    --pad:clamp(16px, 2.4vw, 60px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121110; --bg-alt:#1B1A17; --ink:#EBE7DC; --ink-2:#A9A294;
+      --rule:#2F2D27; --rule-strong:#EBE7DC;
+      --accent:#FF7A45; --on-accent:#1A0C05;
+      --ph-bg:#201E1A; --ph-line:rgba(235,231,220,.06); --ph-ink:#A9A294;
+      --band:#15130E; --band-ink:#F3F1EA; --band-dim:#B5AE9E; --band-accent:#FF7A45;
+      --band-rule:#2E2B22;
+    }
+  }
+
+  /* ─── reset-ish ─────────────────────────────────────────────────────── */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:400 18px/1.55 var(--sans);
+    font-optical-sizing:auto;
+  }
+  img{max-width:100%;height:auto;display:block}
+  a{color:inherit;text-decoration:none}
+  ul{list-style:none}
+  ::selection{background:var(--accent);color:var(--on-accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .wrap{padding-inline:var(--pad)}
+  .mono{font-family:var(--mono)}
+
+  /* ─── carrier line ──────────────────────────────────────────────────── */
+  .carrier{height:3px;background:var(--accent)}
+
+  /* ─── utility bar ───────────────────────────────────────────────────── */
+  .utility{
+    display:flex;justify-content:space-between;align-items:center;gap:var(--s4);
+    border-bottom:1px solid var(--rule);
+    font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+    color:var(--ink-2);text-transform:uppercase;
+    padding-block:var(--s3);
+  }
+  .utility .right{display:flex;align-items:center;gap:var(--s5);white-space:nowrap}
+  .clock{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .live{display:inline-flex;align-items:center;gap:8px;color:var(--accent);font-weight:600}
+  .live .dot{width:8px;height:8px;background:var(--accent);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  @media (prefers-reduced-motion: reduce){.live .dot{animation:none}}
+  @media (max-width:700px){.utility .edition{display:none}}
+
+  /* ─── masthead ──────────────────────────────────────────────────────── */
+  .masthead{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s6);
+    flex-wrap:wrap;
+    padding-block:var(--s5) var(--s4);
+  }
+  .brand h1{
+    font-size:clamp(34px, 3.4vw, 62px);
+    font-weight:800;letter-spacing:-.02em;line-height:1;text-transform:uppercase;
+  }
+  .brand h1 .tick{color:var(--accent)}
+  .brand .tagline{
+    margin-top:var(--s2);
+    font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-2);
+  }
+  .mast-tools{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;justify-content:flex-end}
+  .search{
+    display:flex;align-items:center;height:48px;border:1px solid var(--rule);
+    background:transparent;min-width:220px;
+  }
+  .search input{
+    border:0;background:transparent;color:var(--ink);
+    font:400 16px var(--mono);padding-inline:var(--s4);width:100%;height:100%;
+  }
+  .search input::placeholder{color:var(--ink-2)}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-height:48px;padding-inline:var(--s5);
+    background:var(--accent);color:var(--on-accent);
+    font:600 14px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    border:0;cursor:pointer;
+  }
+  @media (max-width:900px){.mast-tools .search{display:none}}
+
+  /* ─── section nav ───────────────────────────────────────────────────── */
+  .nav{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .nav ul{display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+  .nav ul::-webkit-scrollbar{display:none}
+  .nav a{
+    display:flex;align-items:center;min-height:48px;padding:0 var(--s4);
+    font:500 14px var(--mono);letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-2);white-space:nowrap;border-bottom:3px solid transparent;
+  }
+  .nav a:hover{color:var(--ink)}
+  .nav a[aria-current]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  .nav .spacer{width:1px;background:var(--rule);margin-block:var(--s3);flex:none}
+
+  /* ─── headline ticker (band) ────────────────────────────────────────── */
+  .wireband{
+    background:var(--band);color:var(--band-ink);
+    display:flex;align-items:stretch;overflow:hidden;
+  }
+  .wireband .bug{
+    flex:none;display:flex;align-items:center;gap:10px;
+    background:var(--accent);color:var(--on-accent);
+    font:600 13px var(--mono);letter-spacing:.14em;
+    padding-inline:var(--pad) var(--s4);min-height:52px;
+  }
+  .ticker{flex:1;overflow:hidden;position:relative}
+  .ticker-track{
+    display:flex;width:max-content;height:100%;align-items:center;
+    animation:wire 90s linear infinite;
+  }
+  .wireband:hover .ticker-track,
+  .wireband:focus-within .ticker-track{animation-play-state:paused}
+  @keyframes wire{to{transform:translateX(-50%)}}
+  .tick-set{display:flex;align-items:center}
+  .tick-set a{
+    display:inline-flex;align-items:center;gap:12px;
+    padding:14px 28px;white-space:nowrap;font-size:16px;
+  }
+  .tick-set a:hover .h{text-decoration:underline;text-underline-offset:3px}
+  .tick-set .t{font:600 13px var(--mono);color:var(--band-accent);letter-spacing:.05em}
+  .tick-set .s{font:400 12.5px var(--mono);color:var(--band-dim);letter-spacing:.1em;text-transform:uppercase}
+  .tick-set .sep{width:5px;height:5px;background:var(--band-rule);flex:none;margin-inline:4px}
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track{animation:none}
+    .ticker{overflow-x:auto}
+  }
+
+  /* ─── section headers ───────────────────────────────────────────────── */
+  .sechead{
+    display:flex;align-items:baseline;justify-content:space-between;gap:var(--s4);
+    border-top:3px solid var(--rule-strong);
+    padding-top:var(--s3);margin-bottom:var(--s5);
+  }
+  .sechead .kicker{
+    display:inline-flex;align-items:center;gap:10px;
+    font:600 15px var(--mono);letter-spacing:.16em;text-transform:uppercase;
+  }
+  .sechead .kicker::before{content:"";width:10px;height:10px;background:var(--accent);flex:none}
+  .sechead .sub{font:400 13px var(--mono);letter-spacing:.08em;color:var(--ink-2);text-transform:uppercase}
+  .sechead .more{
+    display:inline-flex;align-items:center;min-height:44px;padding-inline:var(--s3);
+    font:500 13px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+    margin-right:calc(var(--s3) * -1);
+  }
+  .sechead .more:hover{text-decoration:underline;text-underline-offset:4px}
+  @media (max-width:700px){.sechead .sub{display:none}}
+
+  /* ─── shared story bits ─────────────────────────────────────────────── */
+  .slug{
+    display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+    font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  }
+  .slug .time{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+  .slug .src{color:var(--ink);font-weight:500}
+  .slug .sec{color:var(--ink-2)}
+  .sum{color:var(--ink-2);font-size:18px}
+  .ph{
+    background:var(--ph-bg);position:relative;overflow:hidden;
+    display:grid;place-items:center;
+  }
+  .ph::before{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(-45deg, transparent 0 9px, var(--ph-line) 9px 10px);
+  }
+  .ph span{
+    position:relative;font:500 12px var(--mono);letter-spacing:.18em;
+    color:var(--ph-ink);text-transform:uppercase;
+  }
+  .r32{aspect-ratio:3/2}
+  .r169{aspect-ratio:16/9}
+  .r43{aspect-ratio:4/3}
+
+  /* ─── hero zone ─────────────────────────────────────────────────────── */
+  .hero-zone{
+    display:grid;gap:var(--s6);
+    padding-block:var(--s6);
+  }
+  .hz-lead{order:1}
+  .hz-subs{order:2}
+  .hz-wire{order:3}
+  .hero-zone{grid-template-columns:minmax(0,1fr)}
+  @media (min-width:900px){
+    .hero-zone{
+      grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+      grid-template-areas:"lead lead" "subs wire";
+    }
+    .hz-lead{grid-area:lead}
+    .hz-subs{grid-area:subs}
+    .hz-wire{grid-area:wire}
+  }
+  @media (min-width:1280px){
+    .hero-zone{
+      grid-template-columns:minmax(300px,380px) minmax(0,2.3fr) minmax(0,1.15fr);
+      grid-template-areas:"wire lead subs";
+      gap:var(--s7);
+    }
+  }
+  @media (min-width:1900px){
+    .hero-zone{grid-template-columns:minmax(340px,420px) minmax(0,2.5fr) minmax(0,1.1fr)}
+  }
+
+  .hz-lead .slug{margin-bottom:var(--s3)}
+  .hz-lead h2{
+    font-size:clamp(30px, 2.7vw, 56px);
+    font-weight:750;letter-spacing:-.015em;line-height:1.06;
+    margin-bottom:var(--s4);
+  }
+  .hz-lead h2 a:hover{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:3px;text-underline-offset:6px}
+  .hz-lead .ph{margin-bottom:var(--s4);max-height:560px;width:100%}
+  .hz-lead .sum{font-size:19px;max-width:72ch}
+  .out{
+    display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-top:var(--s2);
+    font:600 14px var(--mono);letter-spacing:.08em;color:var(--accent);text-transform:uppercase;
+  }
+  .out:hover{text-decoration:underline;text-underline-offset:4px}
+
+  .railhead{
+    display:flex;align-items:center;gap:10px;
+    border-top:3px solid var(--rule-strong);padding-top:var(--s3);margin-bottom:var(--s2);
+    font:600 14px var(--mono);letter-spacing:.16em;text-transform:uppercase;
+  }
+  .railhead .dot{width:8px;height:8px;background:var(--accent);animation:pulse 1.6s ease-in-out infinite}
+  @media (prefers-reduced-motion: reduce){.railhead .dot{animation:none}}
+  .railhead .count{margin-left:auto;color:var(--ink-2);font-weight:400;font-size:12.5px;letter-spacing:.08em}
+
+  .wire-list a{
+    display:grid;grid-template-columns:58px minmax(0,1fr);gap:var(--s3);
+    padding-block:11px;min-height:44px;align-items:baseline;
+    border-top:1px solid var(--rule);
+  }
+  .wire-list li:first-child a{border-top:0}
+  .wire-list .t{font:600 13px var(--mono);color:var(--accent);font-variant-numeric:tabular-nums}
+  .wire-list .h{font-size:18px;line-height:1.35;font-weight:500}
+  .wire-list .h .src{font:400 12px var(--mono);color:var(--ink-2);letter-spacing:.1em;text-transform:uppercase;margin-left:8px;white-space:nowrap}
+  .wire-list a:hover .h{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+
+  .subs-list a{
+    display:grid;grid-template-columns:46px minmax(0,1fr);gap:var(--s3);
+    padding-block:var(--s4);border-top:1px solid var(--rule);align-items:start;
+  }
+  .subs-list li:first-child a{border-top:0;padding-top:0}
+  .subs-list .n{
+    font:600 24px var(--mono);color:var(--accent);line-height:1;
+    font-variant-numeric:tabular-nums;padding-top:2px;
+  }
+  .subs-list h3{font-size:20px;font-weight:650;letter-spacing:-.01em;line-height:1.25;margin-bottom:6px}
+  .subs-list a:hover h3{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+  .subs-list .slug{font-size:12.5px}
+  @media (min-width:900px) and (max-width:1279px){
+    .hz-subs{border-left:0}
+  }
+
+  .idx a{
+    display:flex;justify-content:space-between;align-items:center;gap:var(--s4);
+    min-height:46px;border-top:1px solid var(--rule);
+  }
+  .idx li:first-child a{border-top:0}
+  .idx .l{font-size:17px;font-weight:500}
+  .idx .n2{font:600 14px var(--mono);color:var(--accent);font-variant-numeric:tabular-nums}
+  .idx a:hover .l{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+
+  /* ─── ad slots ──────────────────────────────────────────────────────── */
+  .adslot{
+    min-height:250px;border:1px dashed var(--rule);
+    display:grid;place-items:center;gap:4px;text-align:center;
+    margin-block:var(--s6);
+  }
+  .adslot .tag{font:500 12px var(--mono);letter-spacing:.2em;color:var(--ink-2);text-transform:uppercase}
+  .adslot .dim{font:400 12px var(--mono);letter-spacing:.08em;color:var(--ink-2)}
+  @media (max-width:768px){.adslot{min-height:110px}}
+
+  /* ─── card grids ────────────────────────────────────────────────────── */
+  section.block{padding-block:var(--s4) var(--s7)}
+  .grid{display:grid;gap:var(--s6) var(--s6)}
+  .grid-us{grid-template-columns:minmax(0,1fr)}
+  .grid-intl{grid-template-columns:minmax(0,1fr)}
+  .grid-recipes{grid-template-columns:minmax(0,1fr)}
+  @media (min-width:640px){
+    .grid-us,.grid-intl,.grid-recipes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (min-width:1024px){
+    .grid-us{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .grid-intl{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid-recipes{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
+  @media (min-width:1900px){
+    .grid-intl{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .grid{gap:var(--s7) var(--s7)}
+  }
+
+  .card{display:flex;flex-direction:column;gap:var(--s3)}
+  .card .ph{order:-1}
+  .card h3{font-size:20px;font-weight:650;letter-spacing:-.01em;line-height:1.28}
+  .card > a{display:block;margin-block:-10px;padding-block:10px} /* 44px+ hit area, zero layout shift */
+  .card a:hover h3,.card h3 a:hover{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+  .card .sum{
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .card.noimg{border-top:3px solid var(--accent);padding-top:var(--s3)}
+  .card.noimg h3{font-size:22px}
+
+  /* ─── world wire (all text) ─────────────────────────────────────────── */
+  .grid-world{display:grid;gap:0 var(--s7);grid-template-columns:minmax(0,1fr)}
+  @media (min-width:760px){.grid-world{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (min-width:1200px){.grid-world{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  .grid-world a{
+    display:block;border-top:1px solid var(--rule);
+    padding-block:var(--s4);min-height:44px;
+  }
+  .grid-world .slug{margin-bottom:6px;font-size:12.5px}
+  .grid-world h3{font-size:19px;font-weight:600;line-height:1.3;letter-spacing:-.005em}
+  .grid-world a:hover h3{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+
+  /* ─── weather strip ─────────────────────────────────────────────────── */
+  .weather{background:var(--bg-alt);border-block:1px solid var(--rule);padding-block:var(--s5)}
+  .wx-row{display:flex;align-items:stretch;gap:0;overflow-x:auto}
+  .wx-alert{
+    flex:none;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    border-left:3px solid var(--accent);padding:6px var(--s5) 6px var(--s4);
+    margin-right:var(--s4);min-height:44px;
+  }
+  .wx-alert .a1{font:600 13px var(--mono);letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+  .wx-alert .a2{font-size:16px;font-weight:500;white-space:nowrap}
+  .wx-city{
+    flex:none;border-left:1px solid var(--rule);
+    padding:6px var(--s5);display:flex;flex-direction:column;gap:2px;justify-content:center;
+  }
+  .wx-city .c{font:500 12.5px var(--mono);letter-spacing:.12em;color:var(--ink-2);text-transform:uppercase;white-space:nowrap}
+  .wx-city .v{font:600 22px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .wx-city .v small{font-size:13px;font-weight:400;color:var(--ink-2);letter-spacing:.04em}
+  .wx-more{
+    flex:none;display:inline-flex;align-items:center;min-height:44px;
+    margin-left:auto;padding-inline:var(--s4);
+    font:600 13px var(--mono);letter-spacing:.12em;color:var(--accent);text-transform:uppercase;white-space:nowrap;
+  }
+  .wx-more:hover{text-decoration:underline;text-underline-offset:4px}
+
+  /* ─── recipes ───────────────────────────────────────────────────────── */
+  .card .meta{
+    font:500 12.5px var(--mono);letter-spacing:.1em;color:var(--ink-2);text-transform:uppercase;
+  }
+
+  /* ─── markets strip ─────────────────────────────────────────────────── */
+  .markets{background:var(--bg-alt);border-top:3px solid var(--rule-strong);padding-block:var(--s5) var(--s6)}
+  .mk-head{display:flex;align-items:baseline;gap:var(--s4);margin-bottom:var(--s4);flex-wrap:wrap}
+  .mk-head .kicker{font:600 14px var(--mono);letter-spacing:.16em;text-transform:uppercase}
+  .mk-head .note{font:400 12.5px var(--mono);letter-spacing:.06em;color:var(--ink-2)}
+  .quotes{display:flex;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s5)}
+  .quote{
+    display:inline-flex;align-items:baseline;gap:10px;min-height:44px;
+    border:1px solid var(--rule);background:var(--bg);padding:8px var(--s4);
+    font-family:var(--mono);font-variant-numeric:tabular-nums;
+  }
+  .quote .q{font-size:12.5px;letter-spacing:.1em;color:var(--ink-2);text-transform:uppercase}
+  .quote .p{font-size:16px;font-weight:600}
+  .quote .d{font-size:13px;color:var(--ink-2)}
+  .mk-cards{display:grid;gap:var(--s5);grid-template-columns:minmax(0,1fr)}
+  @media (min-width:900px){.mk-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .mk-cards a{display:block;border-top:1px solid var(--rule);padding-top:var(--s3);min-height:44px}
+  .mk-cards .slug{margin-bottom:4px;font-size:12.5px}
+  .mk-cards h3{font-size:19px;font-weight:600;line-height:1.3}
+  .mk-cards a:hover h3{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+
+  /* ─── footer ────────────────────────────────────────────────────────── */
+  footer{background:var(--band);color:var(--band-ink);margin-top:var(--s7)}
+  .ft-grid{
+    display:grid;gap:var(--s6);grid-template-columns:minmax(0,1fr);
+    padding-block:var(--s7);
+  }
+  @media (min-width:700px){.ft-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (min-width:1100px){.ft-grid{grid-template-columns:1.6fr 1fr 1.6fr 1fr}}
+  .ft-grid h4{
+    font:600 13px var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--band-accent);margin-bottom:var(--s4);
+  }
+  .ft-brand .b{font-size:24px;font-weight:800;letter-spacing:-.015em;text-transform:uppercase;margin-bottom:var(--s3)}
+  .ft-brand .b .tick{color:var(--band-accent)}
+  .ft-brand p{color:var(--band-dim);font-size:16px;max-width:44ch}
+  .ft-grid ul a{
+    display:inline-flex;align-items:center;min-height:44px;
+    color:var(--band-dim);font-size:16px;
+  }
+  .ft-grid ul a:hover{color:var(--band-ink);text-decoration:underline;text-underline-offset:3px}
+  .ft-srcs{
+    font:400 14px var(--mono);line-height:2.1;color:var(--band-dim);letter-spacing:.02em;
+  }
+  .ft-bottom{
+    border-top:1px solid var(--band-rule);
+    display:flex;justify-content:space-between;gap:var(--s4);flex-wrap:wrap;
+    padding-block:var(--s4);
+    font:400 12.5px var(--mono);letter-spacing:.06em;color:var(--band-dim);
+  }
+</style>
+</head>
+<body>
+
+<div class="carrier"></div>
+
+<!-- utility bar -->
+<div class="wrap utility">
+  <div class="edition">Wednesday, August 19, 2026 &nbsp;·&nbsp; Evening Edition Nº 214</div>
+  <div class="right">
+    <span class="live"><span class="dot"></span>LIVE WIRE</span>
+    <span class="clock" aria-label="Current time">18:54:07 ET</span>
+  </div>
+</div>
+
+<!-- masthead -->
+<header class="wrap masthead">
+  <div class="brand">
+    <h1>The Evening Brief<span class="tick">.</span></h1>
+    <p class="tagline">The day, filed by 7 — headlines, sources, nothing between you and the story</p>
+  </div>
+  <div class="mast-tools">
+    <div class="search"><input type="search" placeholder="SEARCH THE WIRE…" aria-label="Search"></div>
+    <button class="btn" type="button">Subscribe</button>
+  </div>
+</header>
+
+<!-- section nav -->
+<nav class="nav" aria-label="Sections">
+  <ul class="wrap" style="padding-inline:calc(var(--pad) - 16px)">
+    <li><a href="#" aria-current="page">Tonight</a></li>
+    <li><a href="#us">US</a></li>
+    <li><a href="#intl">International</a></li>
+    <li><a href="#world">World</a></li>
+    <li><a href="#weather">Weather</a></li>
+    <li><a href="#recipes">Recipes</a></li>
+    <li class="spacer" aria-hidden="true"></li>
+    <li><a href="#">Politics</a></li>
+    <li><a href="#">Health</a></li>
+    <li><a href="#">Science</a></li>
+    <li><a href="#">Sports</a></li>
+    <li><a href="#">Entertainment</a></li>
+  </ul>
+</nav>
+
+<!-- headline ticker -->
+<div class="wireband">
+  <div class="bug"><span>BREAKING</span></div>
+  <div class="ticker">
+    <div class="ticker-track">
+      <div class="tick-set">
+        <a href="#"><span class="t">18:52</span><span class="h">Hurricane watch issued for the Outer Banks as Erin turns north</span><span class="s">NWS</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:47</span><span class="h">Senate clears stopgap funding bill, sending it to the House</span><span class="s">ABC</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:41</span><span class="h">Evacuation orders widen across two Northern California fire counties</span><span class="s">UPI</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:36</span><span class="h">Supreme Court agrees to hear challenge to state ballot-access law</span><span class="s">CBS</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:30</span><span class="h">EU ministers convene emergency session on Black Sea grain corridor</span><span class="s">DW</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:24</span><span class="h">CDC panel backs updated fall booster for adults over 50</span><span class="s">PBS</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:17</span><span class="h">Typhoon Nari makes landfall south of Shanghai</span><span class="s">BBC</span></a><span class="sep"></span>
+        <a href="#"><span class="t">18:09</span><span class="h">Justice Dept. opens civil-rights inquiry into county jail system</span><span class="s">NPR</span></a><span class="sep"></span>
+      </div>
+      <div class="tick-set" aria-hidden="true">
+        <a href="#" tabindex="-1"><span class="t">18:52</span><span class="h">Hurricane watch issued for the Outer Banks as Erin turns north</span><span class="s">NWS</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:47</span><span class="h">Senate clears stopgap funding bill, sending it to the House</span><span class="s">ABC</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:41</span><span class="h">Evacuation orders widen across two Northern California fire counties</span><span class="s">UPI</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:36</span><span class="h">Supreme Court agrees to hear challenge to state ballot-access law</span><span class="s">CBS</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:30</span><span class="h">EU ministers convene emergency session on Black Sea grain corridor</span><span class="s">DW</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:24</span><span class="h">CDC panel backs updated fall booster for adults over 50</span><span class="s">PBS</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:17</span><span class="h">Typhoon Nari makes landfall south of Shanghai</span><span class="s">BBC</span></a><span class="sep"></span>
+        <a href="#" tabindex="-1"><span class="t">18:09</span><span class="h">Justice Dept. opens civil-rights inquiry into county jail system</span><span class="s">NPR</span></a><span class="sep"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ════ HERO ZONE: wire rail · lead · secondaries ════ -->
+  <div class="hero-zone">
+
+    <!-- lead -->
+    <article class="hz-lead">
+      <p class="slug"><span class="time">18:31</span><span class="src">ABC News</span><span class="sec">· US · Hurricane Erin</span></p>
+      <h2><a href="#">Erin strengthens to a Category&nbsp;3 as hurricane watches go up along the Carolina coast</a></h2>
+      <div class="ph r169"><span>Hero image · publisher CDN · eager, fetchpriority=high</span></div>
+      <p class="sum">The National Hurricane Center extended watches from Cape Fear to the Virginia line
+      Wednesday evening as the season's fifth named storm turned north-northwest, with landfall models
+      split between a brush of the Outer Banks and a close offshore pass. Governors in both Carolinas
+      declared precautionary emergencies ahead of the Friday-morning window.</p>
+      <a class="out" href="#">Read the full story at ABC News →</a>
+    </article>
+
+    <!-- secondaries -->
+    <div class="hz-subs">
+      <div class="railhead">Top of the brief<span class="count">4 stories</span></div>
+      <ul class="subs-list">
+        <li><a href="#">
+          <span class="n" aria-hidden="true">01</span>
+          <div><h3>House returns early from recess to take up spending bill as shutdown deadline nears</h3>
+          <span class="slug"><span class="time">18:22</span><span class="src">The New York Times</span><span class="sec">· Politics</span></span></div>
+        </a></li>
+        <li><a href="#">
+          <span class="n" aria-hidden="true">02</span>
+          <div><h3>Crews gain ground on the Sierra fire complex before red-flag winds return Thursday</h3>
+          <span class="slug"><span class="time">18:10</span><span class="src">KTLA</span><span class="sec">· US</span></span></div>
+        </a></li>
+        <li><a href="#">
+          <span class="n" aria-hidden="true">03</span>
+          <div><h3>Rural hospitals brace for a Medicaid paperwork cliff as new rules take effect</h3>
+          <span class="slug"><span class="time">17:58</span><span class="src">KFF Health News</span><span class="sec">· Health</span></span></div>
+        </a></li>
+        <li><a href="#">
+          <span class="n" aria-hidden="true">04</span>
+          <div><h3>Justice Department opens civil-rights investigation into county jail system</h3>
+          <span class="slug"><span class="time">17:41</span><span class="src">NPR</span><span class="sec">· US</span></span></div>
+        </a></li>
+      </ul>
+
+      <div class="railhead" style="margin-top:var(--s6)">Inside the brief</div>
+      <ul class="idx">
+        <li><a href="#us"><span class="l">US — The National Report</span><span class="n2">08</span></a></li>
+        <li><a href="#intl"><span class="l">International</span><span class="n2">06</span></a></li>
+        <li><a href="#world"><span class="l">World — Off the Wire</span><span class="n2">06</span></a></li>
+        <li><a href="#weather"><span class="l">Weather &amp; Alerts</span><span class="n2">03</span></a></li>
+        <li><a href="#recipes"><span class="l">Recipes — Tonight's Table</span><span class="n2">04</span></a></li>
+      </ul>
+    </div>
+
+    <!-- latest wire rail -->
+    <aside class="hz-wire" aria-label="Latest headlines">
+      <div class="railhead"><span class="dot" aria-hidden="true"></span>Latest — the wire<span class="count">updated 18:54</span></div>
+      <ul class="wire-list">
+        <li><a href="#"><span class="t">18:54</span><span class="h">Metro single-tracks the Red Line through Friday's evening rush<span class="src">WTOP</span></span></a></li>
+        <li><a href="#"><span class="t">18:49</span><span class="h">Appeals court leaves National Guard deployment order in place<span class="src">SRN News</span></span></a></li>
+        <li><a href="#"><span class="t">18:44</span><span class="h">NASA slips crewed lunar flyby to early 2027 after heat-shield review<span class="src">UPI</span></span></a></li>
+        <li><a href="#"><span class="t">18:39</span><span class="h">Measles cluster grows to 41 cases across three states<span class="src">CBS News</span></span></a></li>
+        <li><a href="#"><span class="t">18:33</span><span class="h">Sudan ceasefire talks resume in Jeddah as aid corridors reopen<span class="src">The Guardian</span></span></a></li>
+        <li><a href="#"><span class="t">18:26</span><span class="h">FEMA opens recovery centers in flood-hit Vermont counties<span class="src">NBC News</span></span></a></li>
+        <li><a href="#"><span class="t">18:19</span><span class="h">UK issues first red heat alert for northern England<span class="src">Sky News</span></span></a></li>
+        <li><a href="#"><span class="t">18:12</span><span class="h">Israel–Lebanon maritime border talks resume in Naqoura<span class="src">Al Jazeera</span></span></a></li>
+        <li><a href="#"><span class="t">18:05</span><span class="h">Supreme Court term preview: voting maps back on the docket<span class="src">PBS NewsHour</span></span></a></li>
+        <li><a href="#"><span class="t">17:57</span><span class="h">Berlin fast-tracks grid connections for stalled wind projects<span class="src">DW</span></span></a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <!-- reserved ad slot -->
+  <div class="adslot" role="complementary" aria-label="Advertisement slot">
+    <div>
+      <div class="tag">Advertisement</div>
+      <div class="dim">Reserved 970 × 250 · fixed min-height, renders empty, never shifts layout</div>
+    </div>
+  </div>
+
+  <!-- ════ US ════ -->
+  <section class="block" id="us" aria-labelledby="us-h">
+    <div class="sechead">
+      <span class="kicker" id="us-h">US — The National Report</span>
+      <span class="sub">8 stories · 6 sources · filed since 16:58</span>
+      <a class="more" href="#">View section →</a>
+    </div>
+    <div class="grid grid-us">
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:26</span><span class="src">NBC News</span></p>
+        <a href="#"><h3>FEMA opens disaster recovery centers in flood-hit Vermont counties</h3></a>
+        <p class="sum">Three centers opened Wednesday in Lamoille and Washington counties as damage
+        assessments from last week's flash flooding passed $200 million.</p>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:39</span><span class="src">CBS News</span></p>
+        <a href="#"><h3>Measles cluster grows to 41 cases across three states, health officials say</h3></a>
+        <p class="sum">Cases tied to a July youth conference have now been confirmed in Ohio,
+        Kentucky and Indiana, with exposure notices at two regional airports.</p>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:02</span><span class="src">ABC News</span></p>
+        <a href="#"><h3>Texas grid operator asks for evening conservation amid triple-digit heat</h3></a>
+        <p class="sum">ERCOT issued a voluntary conservation notice for the 6–9 p.m. window as
+        demand approached an August record for the second consecutive day.</p>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">17:48</span><span class="src">The New York Times</span></p>
+        <a href="#"><h3>Chicago teachers reach tentative deal, averting a first-week strike</h3></a>
+        <p class="sum">The four-year agreement, reached after an overnight session, heads to a
+        ratification vote before classes begin Monday.</p>
+      </article>
+      <article class="card noimg">
+        <p class="slug"><span class="time">17:36</span><span class="src">WTOP</span></p>
+        <a href="#"><h3>I-40 reopens through the Pigeon River Gorge after rockslide repairs</h3></a>
+        <p class="sum">Both directions reopened ahead of schedule Wednesday, restoring the main
+        freight route between Tennessee and western North Carolina.</p>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">17:29</span><span class="src">UPI</span></p>
+        <a href="#"><h3>NASA delays crewed lunar flyby to early 2027 after heat-shield review</h3></a>
+        <p class="sum">The agency said charring found on the Artemis II shield requires one more
+        qualification round, pushing the launch window to February.</p>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">17:15</span><span class="src">SRN News</span></p>
+        <a href="#"><h3>Appeals court leaves National Guard deployment order in place for now</h3></a>
+        <p class="sum">A three-judge panel declined to stay the lower-court ruling while the
+        appeal proceeds, setting arguments for the first week of September.</p>
+      </article>
+      <article class="card noimg">
+        <p class="slug"><span class="time">16:58</span><span class="src">NPR</span></p>
+        <a href="#"><h3>First responders in three states test new wildfire evacuation alerts</h3></a>
+        <p class="sum">The opt-out system pushes street-level evacuation routes to phones inside
+        a fire perimeter — a first for the national alerting network.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ════ INTERNATIONAL ════ -->
+  <section class="block" id="intl" aria-labelledby="intl-h">
+    <div class="sechead">
+      <span class="kicker" id="intl-h">International</span>
+      <span class="sub">6 stories · 6 sources</span>
+      <a class="more" href="#">View section →</a>
+    </div>
+    <div class="grid grid-intl">
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:17</span><span class="src">BBC</span></p>
+        <a href="#"><h3>Typhoon Nari makes landfall south of Shanghai, forcing mass evacuations</h3></a>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:33</span><span class="src">The Guardian</span></p>
+        <a href="#"><h3>Sudan ceasefire talks resume in Jeddah as aid corridors reopen</h3></a>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:12</span><span class="src">Al Jazeera</span></p>
+        <a href="#"><h3>Israel and Lebanon resume indirect maritime border talks in Naqoura</h3></a>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">17:57</span><span class="src">DW</span></p>
+        <a href="#"><h3>Germany moves to fast-track grid connections for stalled wind projects</h3></a>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">18:19</span><span class="src">Sky News</span></p>
+        <a href="#"><h3>UK issues first-ever red heat alert for northern England</h3></a>
+      </article>
+      <article class="card">
+        <div class="ph r32"><span>IMG · lazy · 3:2 cover</span></div>
+        <p class="slug"><span class="time">17:22</span><span class="src">The Washington Post</span></p>
+        <a href="#"><h3>Mexico City begins water rationing as reservoirs hit record lows</h3></a>
+      </article>
+    </div>
+  </section>
+
+  <!-- reserved ad slot -->
+  <div class="adslot" role="complementary" aria-label="Advertisement slot">
+    <div>
+      <div class="tag">Advertisement</div>
+      <div class="dim">Reserved 970 × 250 · fixed min-height, renders empty, never shifts layout</div>
+    </div>
+  </div>
+
+  <!-- ════ WORLD WIRE — deliberately all-text ════ -->
+  <section class="block" id="world" aria-labelledby="world-h">
+    <div class="sechead">
+      <span class="kicker" id="world-h">World — Off the Wire</span>
+      <span class="sub">Agency copy · text only by design</span>
+      <a class="more" href="#">View section →</a>
+    </div>
+    <div class="grid-world">
+      <a href="#"><p class="slug"><span class="time">18:46</span><span class="src">UPI</span></p>
+        <h3>Magnitude-6.1 quake shakes southern Peru; no tsunami threat</h3></a>
+      <a href="#"><p class="slug"><span class="time">18:28</span><span class="src">BBC</span></p>
+        <h3>Kenya's high court suspends rollout of the new digital ID scheme</h3></a>
+      <a href="#"><p class="slug"><span class="time">18:14</span><span class="src">DW</span></p>
+        <h3>EU and Indonesia close in on a long-delayed trade agreement</h3></a>
+      <a href="#"><p class="slug"><span class="time">17:52</span><span class="src">The Guardian</span></p>
+        <h3>Antarctic sea ice tracks at a record low for a third straight winter</h3></a>
+      <a href="#"><p class="slug"><span class="time">17:44</span><span class="src">Al Jazeera</span></p>
+        <h3>Cholera cases double in Sudan's displaced-persons camps, WHO says</h3></a>
+      <a href="#"><p class="slug"><span class="time">17:31</span><span class="src">Sky News</span></p>
+        <h3>Australia names its first female chief of the defence force</h3></a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ════ WEATHER STRIP ════ -->
+<section class="weather" id="weather" aria-label="Weather">
+  <div class="wrap wx-row">
+    <div class="wx-alert">
+      <span class="a1">NWS · 3 active alerts</span>
+      <span class="a2">Hurricane Watch · Heat Advisory · Red Flag Warning</span>
+    </div>
+    <div class="wx-city"><span class="c">New York</span><span class="v">84° <small>Clear</small></span></div>
+    <div class="wx-city"><span class="c">Washington</span><span class="v">88° <small>Haze</small></span></div>
+    <div class="wx-city"><span class="c">Chicago</span><span class="v">79° <small>Cloudy</small></span></div>
+    <div class="wx-city"><span class="c">Miami</span><span class="v">91° <small>Storms</small></span></div>
+    <div class="wx-city"><span class="c">Denver</span><span class="v">73° <small>Clear</small></span></div>
+    <div class="wx-city"><span class="c">Los Angeles</span><span class="v">77° <small>Sunny</small></span></div>
+    <div class="wx-city"><span class="c">Seattle</span><span class="v">68° <small>Drizzle</small></span></div>
+    <a class="wx-more" href="#">Full forecast →</a>
+  </div>
+</section>
+
+<main class="wrap">
+  <!-- ════ RECIPES ════ -->
+  <section class="block" id="recipes" aria-labelledby="rec-h" style="padding-top:var(--s7)">
+    <div class="sechead">
+      <span class="kicker" id="rec-h">Recipes — Tonight's Table</span>
+      <span class="sub">What to cook after the news</span>
+      <a class="more" href="#">View section →</a>
+    </div>
+    <div class="grid grid-recipes">
+      <article class="card">
+        <div class="ph r43"><span>IMG · lazy · 4:3 cover</span></div>
+        <p class="slug"><span class="src">Budget Bytes</span></p>
+        <a href="#"><h3>Skillet peach chicken over rice</h3></a>
+        <p class="meta">35 min · $2.10 / serving</p>
+      </article>
+      <article class="card">
+        <div class="ph r43"><span>IMG · lazy · 4:3 cover</span></div>
+        <p class="slug"><span class="src">Smitten Kitchen</span></p>
+        <a href="#"><h3>Charred corn and tomato galette</h3></a>
+        <p class="meta">1 hr 10 · Peak summer</p>
+      </article>
+      <article class="card">
+        <div class="ph r43"><span>IMG · lazy · 4:3 cover</span></div>
+        <p class="slug"><span class="src">Love &amp; Lemons</span></p>
+        <a href="#"><h3>Zucchini noodle salad with lemon-basil dressing</h3></a>
+        <p class="meta">25 min · No-cook</p>
+      </article>
+      <article class="card">
+        <div class="ph r43"><span>IMG · lazy · 4:3 cover</span></div>
+        <p class="slug"><span class="src">Budget Bytes</span></p>
+        <a href="#"><h3>One-pot coconut chickpea curry</h3></a>
+        <p class="meta">40 min · Pantry staples</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<!-- ════ MARKETS — quiet, last, below the fold ════ -->
+<section class="markets" aria-labelledby="mk-h">
+  <div class="wrap">
+    <div class="mk-head">
+      <span class="kicker" id="mk-h">Markets — after the close</span>
+      <span class="note">One strip, end of the brief. Never above this line.</span>
+    </div>
+    <div class="quotes">
+      <span class="quote"><span class="q">S&amp;P 500</span><span class="p">6,412.20</span><span class="d">−0.31%</span></span>
+      <span class="quote"><span class="q">Nasdaq</span><span class="p">21,904.55</span><span class="d">−0.12%</span></span>
+      <span class="quote"><span class="q">Gold</span><span class="p">2,488.10</span><span class="d">+0.42%</span></span>
+    </div>
+    <div class="mk-cards">
+      <a href="#"><p class="slug"><span class="time">16:44</span><span class="src">ABC News Money</span></p>
+        <h3>Stocks drift lower as traders parse the Fed's August minutes</h3></a>
+      <a href="#"><p class="slug"><span class="time">16:20</span><span class="src">UPI</span></p>
+        <h3>Oil settles under $71 after a surprise inventory build</h3></a>
+    </div>
+  </div>
+</section>
+
+<!-- ════ FOOTER ════ -->
+<footer>
+  <div class="wrap ft-grid">
+    <div class="ft-brand">
+      <div class="b">The Evening Brief<span class="tick">.</span></div>
+      <p>This portal aggregates the headline, the feed-provided summary and the source link.
+      Every full article remains with — and belongs to — its original publisher.</p>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="#us">US</a></li>
+        <li><a href="#intl">International</a></li>
+        <li><a href="#world">World</a></li>
+        <li><a href="#weather">Weather</a></li>
+        <li><a href="#recipes">Recipes</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Filed from</h4>
+      <p class="ft-srcs">ABC News · CBS News · NBC News · The New York Times · NPR · UPI ·
+      PBS NewsHour · SRN News · WTOP · KTLA · KFF Health News · BBC · The Guardian ·
+      Al Jazeera · DW · Sky News · The Washington Post · ESPN · National Weather Service ·
+      Budget Bytes · Smitten Kitchen · Love &amp; Lemons</p>
+    </div>
+    <div>
+      <h4>Index</h4>
+      <ul>
+        <li><a href="#">RSS — /feed.xml</a></li>
+        <li><a href="#">Sitemap</a></li>
+        <li><a href="#">About this brief</a></li>
+        <li><a href="#">Corrections</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap ft-bottom">
+    <span>© 2026 The Evening Brief — headlines and summaries remain the property of their publishers.</span>
+    <span>Edition closed 19:00 ET · next brief 07:00</span>
+  </div>
+</footer>
+
+</body>
+</html>

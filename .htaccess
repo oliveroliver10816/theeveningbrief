@@ -1,0 +1,86 @@
+# The Evening Brief — Apache configuration
+#
+# ⚠ DELIBERATELY CONTAINS ZERO REDIRECTS.
+#
+# No force-HTTPS, no force-www, no force-non-www, no hardcoded domain, no Redirect
+# directive, no RewriteRule carrying [R] or [R=301]. That pattern is what broke the
+# last batch: the moment the ZIP is uploaded anywhere other than the final production
+# domain — a CDN, a staging subdomain, a subfolder, an IP — Apache 301s the visitor
+# away to a domain that isn't serving yet, and because a 301 is cached by the browser
+# it keeps happening even after the rule is removed. You can never see what you just
+# uploaded.
+#
+# The ONE rewrite below is INTERNAL (no R flag): it hands unmatched paths to the front
+# controller without changing the URL in the browser. It is also subdirectory-safe —
+# there is intentionally no RewriteBase, so this works identically at a web root and
+# inside /any/sub/folder/.
+#
+# Canonical-domain enforcement, if it is ever wanted, belongs at the CDN/host level
+# AFTER the site is confirmed working — never in this file.
+
+Options -Indexes
+DirectoryIndex index.php index.html
+AddDefaultCharset UTF-8
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Never rewrite a request that maps to a real file or directory.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # data/ holds the database, cache and lock files. Forbidden, not redirected.
+  RewriteRule ^data/ - [F,L]
+
+  # Everything else goes to the front controller. Internal only — no [R].
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+# The SQLite database, cache and lock files live in data/. They must never be
+# web-readable. data/.htaccess denies it too; this is the belt to that pair of braces.
+<FilesMatch "\.(sqlite|sqlite3|db|log|lock)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# config.php is readable by PHP but should never be served as text if PHP is off.
+<Files "config.php">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</Files>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/json
+  AddOutputFilterByType DEFLATE application/xml application/rss+xml image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # HTML is a live news page — never cache it at the edge for long.
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+  ExpiresByType image/webp "access plus 30 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresByType image/vnd.microsoft.icon "access plus 30 days"
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>

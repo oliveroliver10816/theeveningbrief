@@ -1,0 +1,12 @@
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.json
+data/*.lock
+data/cache/
+dist/
+node_modules/
+.gstack/
+.dev.vars
+*.log
+_dev.php
