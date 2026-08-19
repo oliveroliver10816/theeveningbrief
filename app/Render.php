@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace TEB;
 
+// Render and Ingest both size publisher images through Images, and the test
+// harness loads these files directly, so the dependency is declared here rather
+// than relying on bootstrap having run.
+require_once __DIR__ . '/Images.php';
+require_once __DIR__ . '/Placeholder.php';
+
 /**
  * Server-side HTML rendering.
  *
@@ -289,8 +295,22 @@ final class Render
      */
     private static function imgTag(array $a, string $size, bool $eager): string
     {
-        $src = self::outbound(self::s($a['image_url'] ?? ''));
+        $raw = self::s($a['image_url'] ?? '');
+
+        // Our own placeholder is a site-relative path, and outbound() rejects
+        // anything without a scheme and host — which is right for a publisher
+        // URL and wrong for ours. Let ours through untouched.
+        $isOwn = $raw !== '' && Placeholder::isPlaceholder($raw);
+        $src   = $isOwn ? $raw : self::outbound($raw);
         if ($src === '') {
+            return '';
+        }
+
+        // Refuse a picture that cannot fill this slot. Several publishers put a
+        // sidebar thumbnail in their feed — CBS News ships every image at 60x60
+        // — and stretching one into a lead photo produces unreadable mush. The
+        // caller falls back to the designed text-only card, which is better.
+        if (!$isOwn && !Images::usable($a, $size)) {
             return '';
         }
 
@@ -372,6 +392,19 @@ final class Render
             ? ''
             : self::imgTag($a, $mediaBox, !$lazy);
 
+        // Several publishers ship no picture at all — Washington Post, Al Jazeera,
+        // Deutsche Welle and the National Weather Service among them — and CBS's
+        // are too small to use. Rather than leave holes in the grid, draw the
+        // masthead card so every story still looks like a newspaper item.
+        if ($img === '' && $size !== 'small' && $size !== 'text') {
+            $ph = $a;
+            $ph['image_url']    = Placeholder::url($a);
+            $ph['image_width']  = 1200;
+            $ph['image_height'] = 630;
+            $ph['image_alt']    = self::s($a['title'] ?? '');
+            $img = self::imgTag($ph, $mediaBox, !$lazy);
+        }
+
         // The recipe variant is its own skeleton in FINAL.md — `card recipe-card`,
         // no size modifier — so its 4:3 media box is never fighting a size rule.
         $classes = ['card'];
@@ -381,7 +414,7 @@ final class Render
             $classes[] = 'card--' . $size;
         }
         if ($img === '' && $size !== 'small' && $size !== 'text') {
-            // No photograph: the designed no-photo state, server-rendered.
+            // No photograph AND no placeholder drawn: the designed no-photo state.
             $classes[] = 'card--text';
         }
         $extra = self::s($o['class'] ?? '');
@@ -428,8 +461,12 @@ final class Render
                 . ($srcName !== '' && $time !== '' ? ' · ' : '') . $time . '</p>';
         }
 
+        // No card ever links off the site. Every route into a story goes through
+        // our own article page first; the link to the publisher lives there, at
+        // the end of the piece. A lead card that jumped straight to abcnews.com
+        // was handing our traffic away on the front page.
         $outLink = '';
-        $wantOut = array_key_exists('out', $o) ? (bool) $o['out'] : ($size === 'lead');
+        $wantOut = array_key_exists('out', $o) ? (bool) $o['out'] : false;
         if ($wantOut && $out !== '') {
             $outLink = '<a' . self::attrs([
                 'class' => 'card-out',
@@ -1554,10 +1591,52 @@ final class Render
             'cfg'  => $cfg,
             'hed'  => 'h1',
             'link' => false,
-            'out'  => true,
+            'out'  => false,
         ]);
 
-        $body = '<section class="block wrap" aria-label="Story">' . $head . $card . '</section>';
+        // The story text. Most newsrooms put only a paragraph or two in their
+        // feed and hold the rest back deliberately; a few (recipe sites) publish
+        // the whole piece. We render everything the feed actually gives us and
+        // link out for the remainder. We never fetch and re-publish their page.
+        $prose    = self::s($a['body'] ?? '');
+        $summary2 = self::s($a['summary'] ?? '');
+        if ($prose === '' || mb_strlen($prose) < mb_strlen($summary2)) {
+            $prose = $summary2;
+        }
+
+        $paras = '';
+        foreach (preg_split('/\n{2,}/', $prose) ?: [] as $chunk) {
+            $chunk = trim((string) $chunk);
+            if ($chunk !== '') {
+                $paras .= '<p>' . self::esc($chunk) . '</p>';
+            }
+        }
+        if ($paras === '') {
+            $paras = '<p>' . self::esc($summary2) . '</p>';
+        }
+
+        $byline = '';
+        $author = self::s($a['author'] ?? '');
+        if ($author !== '' || $srcName !== '') {
+            $byline = '<p class="article-byline">'
+                . ($author !== '' ? 'By ' . self::esc($author) . ' · ' : '')
+                . self::esc($srcName)
+                . '</p>';
+        }
+
+        $outUrl  = self::outbound(self::s($a['url'] ?? ''));
+        $continue = $outUrl !== ''
+            ? '<p class="article-continue"><a' . self::attrs([
+                'class'  => 'card-out',
+                'href'   => $outUrl,
+                'rel'    => 'noopener nofollow',
+                'target' => '_blank',
+              ]) . '>' . self::esc('Read more at ' . ($srcName !== '' ? $srcName : 'the publisher') . ' →') . '</a></p>'
+            : '';
+
+        $article = '<div class="article-body">' . $byline . $paras . $continue . '</div>';
+
+        $body = '<section class="block wrap" aria-label="Story">' . $head . $card . $article . '</section>';
 
         $related = is_array($model['related'] ?? null) ? $model['related'] : [];
         if ($related) {

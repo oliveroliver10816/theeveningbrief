@@ -186,3 +186,43 @@ Worker — the scheduled trigger runs inside Cloudflare and is unaffected. Verif
 
 ⚠ **Six Heroku accounts are stored in Gitku** (`deploy_bot_us` + `deploy_bot_apac` D1). The app name
 is `the-evening-brief`; the hash in the URL is not part of it — matching on the URL found nothing.
+
+
+## 2026-08-19 rev 2 — the five things the client rejected, and what was actually wrong
+
+1. ⭐⭐ **"The black background is putting me off"** — the site was never meant to be black.
+   Fable 5's palette is warm paper `#FBFAF7`; the dark palette was a secondary, wired to
+   `@media (prefers-color-scheme:dark)`. **His browser was in dark mode, so he had never once
+   seen the real design.** Auto-switching is now disabled (the query is parked behind
+   `and (min-width:99999px)` with the reason in a comment); dark survives only via the toggle.
+   ⚠ Lesson: a news brand must not follow the OS theme. Light is the product decision.
+2. **Front-page cards linked straight to the publisher.** The lead card carried
+   `card-out` → abcnews.com, i.e. the home page handed our traffic away. Cards now link only
+   to our own article page; the publisher link lives at the foot of the story. Two tests were
+   INVERTED to assert the opposite of what they used to.
+3. ⚠⚠ **"Proper article, not a 3-4 liner" is bounded by the feeds, not by us.** Measured:
+   ABC 0 chars of body, UPI 147, NPR 200, Guardian 761, CBS 121 — publishers withhold the body
+   deliberately. Only WordPress feeds carry the whole piece (Budget Bytes **14,949 chars**).
+   **dailynews18, his own reference, shows ONE summary paragraph + "Read full story at …" —
+   verified by fetching its article page.** So: a new `body` column stores the fullest text the
+   feed really gives, `Xml::itemBody()` keeps paragraph breaks, and `.article-body` renders it
+   at a 44rem measure with a byline and a "Read more at X" at the end. A recipe now renders as
+   a genuine 3,444-word article. We do NOT scrape publisher pages — that is republishing.
+4. ⭐ **Images were never measured.** `image_width`/`image_height` existed and the renderer read
+   them, but nothing ever populated them — so a **CBS 60x60 thumbnail was declared 640 wide and
+   stretched across a lead slot**. New `app/Images.php`: verified CDN upgrades (BBC 240→1024 on
+   both path shapes; NPR Brightspot 4032x3024/3.3 MB → 1200x900/573 KB), concurrent measurement
+   with a per-host cap of 2 (**UPI answers a burst with HTTP 429 / Cloudflare 1015**), a 256 KB
+   header sniff (**64 KB missed NPR's SOF marker entirely**), and a floor per card size.
+   CBS's 72 unusable images are now dropped, not stretched. `image_tries` caps retries at 4 so a
+   rate-limiting CDN is not re-hammered hourly for ever.
+5. **Placeholder for image-less sources** — Washington Post, Al Jazeera, Deutsche Welle and the
+   National Weather Service publish no pictures. `app/Placeholder.php` draws a masthead SVG on
+   our own domain (per-section ink, deterministic variant, `immutable` cache). Live home page:
+   23 images, 4 placeholders, **0 cards with no image**.
+
+⚠ `Render::outbound()` rejects anything without a scheme+host, which silently swallowed our own
+relative placeholder URL — the placeholder rendered nowhere until that was special-cased.
+⚠ `src/design.css` is the designer's file; `assets/css/site.css` is that file **plus** a marked
+`RENDERER EXTENSION` block. Copying the extension back into design.css broke the integrity test.
+Tests: **336 pass, 0 fail.**

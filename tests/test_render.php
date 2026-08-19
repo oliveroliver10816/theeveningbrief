@@ -299,22 +299,33 @@ return [
         assertSame('1234', rAttr($img, 'width'));
         assertSame('567', rAttr($img, 'height'));
 
-        // No stored dimensions: fall back to the card's nominal box, never zero.
+        // No stored dimensions means we do not KNOW the picture is big enough,
+        // so the publisher image is not used at all and the masthead placeholder
+        // is drawn instead — at its own true size. Declaring an unmeasured image
+        // to be the card's nominal width is exactly how a 60x60 CBS thumbnail
+        // ended up stretched across a lead slot.
         $html2 = Render::card(rRow(8, ['image_width' => 0, 'image_height' => 0]), ['size' => 'medium', 'cfg' => rCfg()]);
         $img2  = rImgs($html2)[0];
-        assertSame('640', rAttr($img2, 'width'));
-        assertSame('427', rAttr($img2, 'height'));
+        assertContains('placeholder.svg', rAttr($img2, 'src'), 'an unmeasured image must not be gambled on');
+        assertSame('1200', rAttr($img2, 'width'));
+        assertSame('630', rAttr($img2, 'height'));
     },
 
-    'a card with no image emits NO <img> at all and renders the text-only variant' => function (): void {
+    'a card with no usable image draws OUR placeholder, never the publisher junk' => function (): void {
         rInit();
         $cfg = rCfg();
 
+        // Washington Post, Al Jazeera, Deutsche Welle and the National Weather
+        // Service all publish without pictures, so a real share of the grid had
+        // holes in it. Those cards now carry the masthead placeholder.
         foreach ([null, '', 'javascript:alert(1)', 'data:text/html,<b>x</b>'] as $bad) {
             $html = Render::card(rRow(9, ['image_url' => $bad]), ['size' => 'medium', 'cfg' => $cfg]);
-            assertSame([], rImgs($html), 'an <img> was emitted for image_url=' . var_export($bad, true));
-            assertNotContains('card-media', $html, 'the media box must be omitted entirely, not hidden');
-            assertContains('card--text', $html, 'an imageless card must render the designed text-only state');
+            $imgs = rImgs($html);
+            assertCount(1, $imgs, 'exactly one placeholder for image_url=' . var_export($bad, true));
+            assertContains('placeholder.svg', rAttr($imgs[0], 'src'), 'the placeholder must be ours');
+            // The hostile values must never reach the page.
+            assertNotContains('javascript:', $html);
+            assertNotContains('data:text/html', $html);
         }
 
         // …and the same page still shows the headline and the source line.
@@ -669,11 +680,12 @@ return [
         assertSame(2, preg_match_all('/<article class="card/', $strip2), 'a model offering five finance stories must still yield two');
 
         // The front-page lead links out to the publisher, which is the whole of
-        // SPEC 0.7 — we show a headline and a summary and then send the reader on.
+        // The lead sends the reader to OUR article page, never to the publisher.
+        // The link out lives at the foot of the story text on that page.
         $hero = substr($html, (int) strpos($html, 'hero-lead'));
         $hero = substr($hero, 0, (int) strpos($hero, '</article>'));
-        assertContains('class="card-out"', $hero, 'the front-page lead has no link to the publisher');
-        assertContains('Read the full story at', $hero);
+        assertNotContains('class="card-out"', $hero, 'the front-page lead must not link to the publisher');
+        assertContains('/article/', $hero, 'the lead must link to our own article page');
     },
 
     'the ticker duplicates its list for the CSS loop and hides the copy from everyone' => function (): void {
@@ -792,7 +804,7 @@ return [
         assertContains('Nothing matched', $html);
     },
 
-    'an article page links out prominently and never republishes a body' => function (): void {
+    'an article page renders the feed text and still links to the publisher' => function (): void {
         rInit();
         $a = rRow(80, ['title' => 'The one story', 'summary' => 'The feed summary, and nothing more.']);
         $html = Render::article(['article' => $a, 'related' => [rRow(81), rRow(82), rRow(83)]], rCfg());
@@ -800,7 +812,11 @@ return [
         assertContains('<h1 class="card-hed">The one story</h1>', $html, 'the article headline must be an h1 that does not link to itself');
         assertContains('class="card-out"', $html);
         assertContains('href="https://news.example.test/story/80"', $html, 'the outbound link to the publisher is missing');
-        assertContains('Read the full story at Example News', $html);
+        // The link now sits at the END of the story text rather than on the card,
+        // because the page carries the feed's own prose above it.
+        assertContains('Read more at Example News', $html);
+        assertContains('class="article-body"', $html, 'the story text must be rendered, not just a card summary');
+        assertContains('The feed summary, and nothing more.', $html);
         assertContains('property="og:type" content="article"', $html);
         assertContains(Render::esc(Paths::absolute('/article/the-one-story-80')), $html, 'the canonical must be the slugged article URL');
         assertContains('>Related</span>', $html);

@@ -46,6 +46,19 @@ final class Router
                 return self::sources($pdo, $cfg);
             case '/about':
                 return self::about($pdo, $cfg);
+            case '/placeholder.svg':
+                return [
+                    'status'  => 200,
+                    'headers' => [
+                        'Content-Type'  => 'image/svg+xml; charset=utf-8',
+                        'Cache-Control' => 'public, max-age=31536000, immutable',
+                    ],
+                    'body'    => Placeholder::svg(
+                        (string) ($query['s'] ?? ''),
+                        (int) ($query['v'] ?? 0),
+                        $cfg
+                    ),
+                ];
             case '/healthz':
                 return self::healthz($pdo, $cfg);
             case '/admin/ingest':
@@ -348,8 +361,12 @@ final class Router
         try {
             $r = Ingest::run($pdo, $cfg, null);
             $pruned = 0;
+            $backfill = ['checked' => 0, 'measured' => 0, 'dropped' => 0];
             if ((int) ($query['prune'] ?? 0) === 1) {
                 $pruned = Db::pruneOld($pdo, (int) ($cfg['ingest']['retention_days'] ?? 30));
+                // Drain the measuring backlog a batch at a time on the hourly
+                // tick, so images that missed their run still get sized.
+                $backfill = Ingest::backfillImages($pdo, $cfg, 120, 15.0);
             }
             return self::json(200, [
                 'ok'       => true,
@@ -358,6 +375,7 @@ final class Router
                 'inserted' => (int) ($r['inserted'] ?? 0),
                 'skipped'  => (int) ($r['skipped'] ?? 0),
                 'pruned'   => $pruned,
+                'images'   => $backfill,
                 'articles' => Db::countArticles($pdo),
             ]);
         } catch (Throwable $e) {

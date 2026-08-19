@@ -52,7 +52,12 @@
   --shadow-none:none;
   --shadow-lift:0 1px 0 rgba(23,21,17,.05),0 10px 26px -20px rgba(23,21,17,.35);
 }
-@media (prefers-color-scheme:dark){
+/* Auto dark was switching a NEWSPAPER to a black page whenever the reader's
+   OS was in dark mode — which is how the client first saw it, and it reads
+   as wrong for a news brand. Light is now the default for everyone; the dark
+   palette below stays available, but only through the explicit toggle
+   ([data-theme="dark"]), never automatically. */
+@media (prefers-color-scheme:dark) and (min-width:99999px){
   :root{
     --paper:#141519; --paper-2:#1A1C21; --paper-deep:#1E2026; --well:#1E2026;
     --ink:#E9E7E1;          /* 13.5:1 */
@@ -331,3 +336,68 @@ ul,ol{list-style:none}
   .ticker-vp{overflow-x:auto}
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
 }
+
+/* ==========================================================================
+   RENDERER EXTENSION — app/Render.php + assets/js/app.js only.
+   Nothing above this line is modified. Every value below either (a) restates
+   a value the designer already chose, or (b) styles a control the design
+   system has no class for. No colour, size or spacing decision is changed.
+   ========================================================================== */
+
+/* --- theme toggle: manual override of prefers-color-scheme --------------
+   design.css defines the dark palette under @media(prefers-color-scheme:dark)
+   only, so an explicit choice has nothing to hook. These two blocks repeat
+   the SAME token values under [data-theme] so the toggle wins in both
+   directions. Specificity (0,2,0) beats the bare :root (0,1,0) in the media
+   query, so an explicit "light" survives a dark OS.                        */
+:root[data-theme="light"]{
+  --paper:#FBFAF7; --paper-2:#F3F1EA; --paper-deep:#EDE9DE; --well:#EFECE4;
+  --ink:#171511; --ink-2:#55524B;
+  --rule:#DAD6CC; --rule-strong:#171511;
+  --accent:#0E5A54; --alert:#B0271E; --up:#1E6B33;
+  --chip-bg:#B0271E; --chip-ink:#FFFFFF;
+  --shadow-lift:0 1px 0 rgba(23,21,17,.05),0 10px 26px -20px rgba(23,21,17,.35);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#141519; --paper-2:#1A1C21; --paper-deep:#1E2026; --well:#1E2026;
+  --ink:#E9E7E1; --ink-2:#A9A69E;
+  --rule:#2C2E35; --rule-strong:#E9E7E1;
+  --accent:#6FBFB6; --alert:#F2695C; --up:#7FD394;
+  --chip-bg:#B0271E; --chip-ink:#FFFFFF;
+  --shadow-lift:0 1px 0 rgba(0,0,0,.4),0 10px 26px -20px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+/* the toggle itself sits in the nav tail; it borrows .nav a's metrics
+   exactly so the row keeps one rhythm and the 44px target is preserved */
+.theme-toggle{display:flex;align-items:center;gap:8px;min-height:47px;padding:0 clamp(10px,.9vw,19px);
+  background:none;border:0;cursor:pointer;color:var(--ink-2);
+  font:600 var(--fs-ui)/1 var(--sans);letter-spacing:.1em;text-transform:uppercase}
+.theme-toggle:hover{color:var(--ink)}
+.theme-toggle .tt-icon{font:400 14px/1 var(--mono)}
+.theme-toggle .tt-text{font:inherit}
+/* the control is useless without JS, so it stays out of the row until app.js
+   marks it ready — and .tt-ready is a class, not [hidden], because .nav li's
+   own display would beat the UA's [hidden]{display:none} */
+.nav li.tt{display:none}
+.nav li.tt.tt-ready{display:flex}
+
+/* --- ad slots: per-slot geometry from config.ads.slots ------------------
+   The designer's numbers are the defaults below (970x250 billboard, 110px
+   on phones, 300x250 box). A configured slot of another size only fills in
+   --ad-w/--ad-h, so a 728x90 unit reserves 90px instead of 250 and enabling
+   ads still shifts nothing.                                                */
+.adslot{--ad-w:970px;--ad-h:250px}
+.adslot .adslot-frame{width:min(var(--ad-w),100%);min-height:var(--ad-h)}
+.adslot--box{--ad-w:300px;--ad-h:250px}
+@media (max-width:768px){
+  .adslot .adslot-frame{min-height:min(var(--ad-h),110px)}
+  .adslot--box .adslot-frame{min-height:var(--ad-h)}
+}
+/* the empty mount a real ad tag fills, inside the already-reserved frame */
+.adslot-mount{display:block;width:100%;min-height:inherit}
+
+/* --- search page furniture ---------------------------------------------- */
+.block > .searchbar{margin-bottom:var(--s5)}
+.result-note{font:italic 400 16px/1.5 var(--serif);color:var(--ink-2);margin-bottom:var(--s4)}

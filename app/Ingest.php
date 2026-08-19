@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace TEB;
 
+// Render and Ingest both size publisher images through Images, and the test
+// harness loads these files directly, so the dependency is declared here rather
+// than relying on bootstrap having run.
+require_once __DIR__ . '/Images.php';
+
 use PDO;
 
 /**
@@ -388,6 +393,151 @@ final class Ingest
     }
 
     /**
+     * Measure images already in the database that have never been measured.
+     *
+     * Rows written before measuring existed, or skipped when a run ran out of
+     * budget, carry an image with unknown dimensions — which Render will not
+     * place in a real card. This walks them a batch at a time, so the backlog
+     * drains over a few hourly passes instead of stalling one request.
+     *
+     * Returns ['checked'=>int,'measured'=>int,'dropped'=>int,'upgraded'=>int].
+     */
+    /** Give up measuring a picture after this many failed attempts. */
+    private const MAX_IMAGE_TRIES = 4;
+
+    public static function backfillImages(PDO $p, array $cfg, int $limit = 120, float $budget = 20.0): array
+    {
+        $out = ['checked' => 0, 'measured' => 0, 'dropped' => 0, 'upgraded' => 0, 'unmeasured' => 0];
+
+        try {
+            // image_tries caps the retries: a CDN that rate-limits us (UPI answers
+            // a burst with HTTP 429) would otherwise be re-fetched on every
+            // hourly pass for ever, for images that will never measure.
+            $st = $p->prepare(
+                'SELECT id, image_url FROM articles '
+                . "WHERE image_url <> '' AND (image_width IS NULL OR image_width = 0) "
+                . 'AND COALESCE(image_tries, 0) < ' . self::MAX_IMAGE_TRIES . ' '
+                . 'ORDER BY published_at DESC LIMIT ?'
+            );
+            $st->bindValue(1, max(1, $limit), PDO::PARAM_INT);
+            $st->execute();
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('[teb] backfill select: ' . $e->getMessage());
+
+            return $out;
+        }
+
+        if ($rows === []) {
+            return $out;
+        }
+        $out['checked'] = count($rows);
+
+        // Apply the CDN rewrites first — a smaller rendition is both the one we
+        // want to serve and the one that measures reliably.
+        $byUrl = [];
+        foreach ($rows as $r) {
+            $orig = (string) $r['image_url'];
+            $up   = Images::upgradeUrl($orig);
+            if ($up !== $orig) {
+                $out['upgraded']++;
+            }
+            $byUrl[(int) $r['id']] = $up;
+        }
+
+        $sizes = Images::measure(array_values($byUrl), $cfg, $budget);
+
+        $set  = $p->prepare('UPDATE articles SET image_url = ?, image_width = ?, image_height = ? WHERE id = ?');
+        $drop = $p->prepare("UPDATE articles SET image_url = '', image_width = 0, image_height = 0 WHERE id = ?");
+
+        $miss = $p->prepare('UPDATE articles SET image_tries = COALESCE(image_tries, 0) + 1 WHERE id = ?');
+
+        foreach ($byUrl as $id => $url) {
+            if (!isset($sizes[$url])) {
+                // Could not read it. Count the attempt so this cannot spin for ever.
+                $miss->execute([$id]);
+                $out['unmeasured'] = ($out['unmeasured'] ?? 0) + 1;
+                continue;
+            }
+            $w = $sizes[$url]['w'];
+            $h = $sizes[$url]['h'];
+
+            if ($w < Images::ABSOLUTE_MIN_WIDTH || $h < Images::ABSOLUTE_MIN_HEIGHT) {
+                $drop->execute([$id]);
+                $out['dropped']++;
+                continue;
+            }
+            $set->execute([$url, $w, $h, $id]);
+            $out['measured']++;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ask each picture how big it is, and drop the ones that are too small.
+     *
+     * A feed advertises an image without saying its size. CBS News publishes
+     * every RSS picture at 60x60; stretched into a lead slot that is unreadable
+     * mush. Measuring costs one bounded range request per new image, runs
+     * concurrently, and is capped by a time budget — whatever is not measured in
+     * time keeps its URL with unknown dimensions, which Render treats as
+     * small-card-only rather than assuming it is fine.
+     *
+     * @param  array<int,array<string,mixed>> $rows
+     * @return array<int,array<string,mixed>>
+     */
+    private static function measureImages(array $rows, array $cfg): array
+    {
+        $urls = [];
+        foreach ($rows as $r) {
+            $u = (string) ($r['image_url'] ?? '');
+            if ($u !== '') {
+                $urls[] = $u;
+            }
+        }
+        if ($urls === []) {
+            return $rows;
+        }
+
+        $budget = (float) ($cfg['ingest']['image_measure_seconds'] ?? 20.0);
+        if ($budget <= 0) {
+            return $rows;                     // measuring switched off in config
+        }
+
+        try {
+            $sizes = Images::measure($urls, $cfg, $budget);
+        } catch (\Throwable $e) {
+            error_log('[teb] image measure failed: ' . $e->getMessage());
+
+            return $rows;                     // never let this stop an ingest
+        }
+
+        foreach ($rows as $k => $r) {
+            $u = (string) ($r['image_url'] ?? '');
+            if ($u === '' || !isset($sizes[$u])) {
+                continue;
+            }
+            $w = $sizes[$u]['w'];
+            $h = $sizes[$u]['h'];
+
+            if ($w < Images::ABSOLUTE_MIN_WIDTH || $h < Images::ABSOLUTE_MIN_HEIGHT) {
+                // Too small for any slot. Drop it and let the text card do its
+                // job — a designed text card beats a blurred thumbnail.
+                $rows[$k]['image_url']    = '';
+                $rows[$k]['image_width']  = 0;
+                $rows[$k]['image_height'] = 0;
+                continue;
+            }
+
+            $rows[$k]['image_width']  = $w;
+            $rows[$k]['image_height'] = $h;
+        }
+
+        return $rows;
+    }
+
+    /**
      * Parsed feed items to article rows for Db::insertArticles().
      *
      * @param array<string,mixed>       $feed    one row from Feeds::all()
@@ -419,7 +569,10 @@ final class Ingest
                 'url'          => $url,
                 'title'        => $title,
                 'summary'      => (string) ($i['summary'] ?? ''),
-                'image_url'    => (string) ($i['image_url'] ?? ''),
+                'body'         => (string) ($i['body'] ?? ''),
+                // Upgraded here so the larger rendition is what gets stored,
+                // measured and served. Unknown CDNs pass through untouched.
+                'image_url'    => Images::upgradeUrl((string) ($i['image_url'] ?? '')),
                 'author'       => (string) ($i['author'] ?? ''),
                 // null means the feed did not say; Db falls back to the fetch time.
                 'published_at' => is_int($published) ? $published : 0,
@@ -644,6 +797,8 @@ final class Ingest
 
             return $result;
         }
+
+        $rows = self::measureImages($rows, $cfg);
 
         $written = Db::insertArticles($p, $rows);
 

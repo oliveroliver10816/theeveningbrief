@@ -22,6 +22,8 @@ require_once TEB_ROOT . '/app/Config.php';
 require_once TEB_ROOT . '/app/Paths.php';
 require_once TEB_ROOT . '/app/Feeds.php';
 require_once TEB_ROOT . '/app/Xml.php';
+require_once TEB_ROOT . '/app/Images.php';
+require_once TEB_ROOT . '/app/Placeholder.php';
 require_once TEB_ROOT . '/app/Db.php';
 require_once TEB_ROOT . '/app/Ingest.php';
 require_once TEB_ROOT . '/app/Compose.php';

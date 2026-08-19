@@ -72,7 +72,7 @@ final class Db
         . 'COALESCE(s.tier, 3) AS source_tier, '
         . "COALESCE(NULLIF(s.homepage, ''), '') AS source_homepage, "
         . 'a.section, a.url, a.title, a.title_key, a.summary, a.image_url, '
-        . 'a.image_width, a.image_height, a.author, a.published_at, a.fetched_at, a.guid_hash';
+        . 'a.image_width, a.image_height, a.author, a.published_at, a.fetched_at, a.guid_hash, a.body';
 
     // ---------------------------------------------------------------- connection
 
@@ -256,9 +256,15 @@ final class Db
                     ['title', 'varchar:400', "''"],
                     ['title_key', 'varchar:191', "''"],
                     ['summary', 'text'],
+                    // The fullest text the feed itself supplies. Never scraped.
+                    ['body', 'text'],
                     ['image_url', 'varchar:1000', "''"],
                     ['image_width', 'int', '0'],
                     ['image_height', 'int', '0'],
+                    // How many times we have tried and failed to measure the
+                    // image. A CDN that rate-limits us must not be re-hammered
+                    // on every hourly pass forever.
+                    ['image_tries', 'int', '0'],
                     ['author', 'varchar:160', "''"],
                     ['published_at', 'bigint', '0'],
                     ['fetched_at', 'bigint', '0'],
@@ -984,8 +990,8 @@ final class Db
         try {
             $ins = $p->prepare(
                 'INSERT INTO articles (source_id, source_slug, source_name, section, guid, guid_hash, '
-                . 'url, title, title_key, summary, image_url, image_width, image_height, author, '
-                . 'published_at, fetched_at) VALUES (' . self::placeholders(16) . ')'
+                . 'url, title, title_key, summary, body, image_url, image_width, image_height, author, '
+                . 'published_at, fetched_at) VALUES (' . self::placeholders(17) . ')'
             );
 
             foreach ($clean as $r) {
@@ -1007,12 +1013,13 @@ final class Db
                 $ins->bindValue(8, $r['title']);
                 $ins->bindValue(9, $r['title_key']);
                 $ins->bindValue(10, $r['summary']);
-                $ins->bindValue(11, $r['image_url']);
-                $ins->bindValue(12, $r['image_width'], PDO::PARAM_INT);
-                $ins->bindValue(13, $r['image_height'], PDO::PARAM_INT);
-                $ins->bindValue(14, $r['author']);
-                $ins->bindValue(15, $r['published_at'], PDO::PARAM_INT);
-                $ins->bindValue(16, $r['fetched_at'], PDO::PARAM_INT);
+                $ins->bindValue(11, (string) ($r['body'] ?? ''));
+                $ins->bindValue(12, $r['image_url']);
+                $ins->bindValue(13, $r['image_width'], PDO::PARAM_INT);
+                $ins->bindValue(14, $r['image_height'], PDO::PARAM_INT);
+                $ins->bindValue(15, $r['author']);
+                $ins->bindValue(16, $r['published_at'], PDO::PARAM_INT);
+                $ins->bindValue(17, $r['fetched_at'], PDO::PARAM_INT);
 
                 try {
                     $ins->execute();
@@ -1123,6 +1130,7 @@ final class Db
             'title_key'    => mb_substr(self::titleKey($title), 0, 191),
             'summary'      => mb_substr((string) ($r['summary'] ?? ''), 0, 4000),
             'image_url'    => $image,
+            'body'         => (string) ($r['body'] ?? ''),
             'image_width'  => max(0, (int) ($r['image_width'] ?? 0)),
             'image_height' => max(0, (int) ($r['image_height'] ?? 0)),
             'author'       => mb_substr(trim((string) ($r['author'] ?? '')), 0, 160),

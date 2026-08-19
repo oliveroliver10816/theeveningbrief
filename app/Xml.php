@@ -327,6 +327,7 @@ final class Xml
             'url'          => $url,
             'title'        => self::trimSummary($title, 300),
             'summary'      => self::itemSummary($it, $ns, $kind),
+            'body'         => self::itemBody($it, $ns, $kind),
             'image_url'    => self::itemImage($it, $ns),
             'published_at' => self::itemDate($it, $ns, $kind),
             'author'       => self::itemAuthor($it, $ns, $kind),
@@ -383,6 +384,44 @@ final class Xml
         }
         $about = self::attr($it, 'about', self::NS_RDF);
         return $about !== '' ? $about : $url;
+    }
+
+    /**
+     * The fullest article text the feed carries, untrimmed.
+     *
+     * Separate from itemSummary(), which is deliberately short for cards. Most
+     * news feeds carry only 150-800 characters here because publishers withhold
+     * the body on purpose; WordPress feeds (recipes) carry the whole piece. We
+     * render whatever is really there and link to the publisher for the rest —
+     * we never fetch and republish the full text from their page.
+     *
+     * @param array<string,string> $ns
+     */
+    private static function itemBody(\SimpleXMLElement $it, array $ns, string $kind): string
+    {
+        $candidates = [];
+        $candidates[] = self::text($it->children($ns['content'])->encoded ?? null);
+        if ($kind === 'atom') {
+            $candidates[] = self::text($it->children($ns['atom'])->content ?? null);
+        }
+        $candidates[] = self::text($it->description ?? null);
+        if ($kind === 'atom') {
+            $candidates[] = self::text($it->children($ns['atom'])->summary ?? null);
+        }
+
+        $best = '';
+        foreach ($candidates as $raw) {
+            // Keep paragraph boundaries: stripHtml flattens, so mark them first.
+            $marked = preg_replace('#</(p|div|li|h[1-6]|blockquote)\s*>#i', "$0\n\n", (string) $raw);
+            $marked = preg_replace('#<br\s*/?>#i', "\n", (string) $marked);
+            $clean  = self::stripHtml((string) $marked);
+            $clean  = trim((string) preg_replace("/\n{3,}/", "\n\n", $clean));
+            if (mb_strlen($clean) > mb_strlen($best)) {
+                $best = $clean;
+            }
+        }
+
+        return mb_substr($best, 0, 20000);
     }
 
     /** @param array<string,string> $ns */

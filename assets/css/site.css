@@ -52,7 +52,12 @@
   --shadow-none:none;
   --shadow-lift:0 1px 0 rgba(23,21,17,.05),0 10px 26px -20px rgba(23,21,17,.35);
 }
-@media (prefers-color-scheme:dark){
+/* Auto dark was switching a NEWSPAPER to a black page whenever the reader's
+   OS was in dark mode — which is how the client first saw it, and it reads
+   as wrong for a news brand. Light is now the default for everyone; the dark
+   palette below stays available, but only through the explicit toggle
+   ([data-theme="dark"]), never automatically. */
+@media (prefers-color-scheme:dark) and (min-width:99999px){
   :root{
     --paper:#141519; --paper-2:#1A1C21; --paper-deep:#1E2026; --well:#1E2026;
     --ink:#E9E7E1;          /* 13.5:1 */
@@ -396,3 +401,13 @@ ul,ol{list-style:none}
 /* --- search page furniture ---------------------------------------------- */
 .block > .searchbar{margin-bottom:var(--s5)}
 .result-note{font:italic 400 16px/1.5 var(--serif);color:var(--ink-2);margin-bottom:var(--s4)}
+
+/* === RENDERER EXTENSION =================================================
+   Added after the designer's file. The article body is a reading measure,
+   not a card summary — the design system had no component for it because
+   article pages originally carried only a one-line feed summary. */
+.article-body{max-width:44rem;margin:var(--s5) 0 0;font-family:var(--serif);font-size:19px;line-height:1.72;color:var(--ink)}
+.article-body p{margin:0 0 1.05em}
+.article-byline{font-family:var(--sans);font-size:var(--fs-meta);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--s4)}
+.article-continue{margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--rule)}
+.article-continue .card-out{font-family:var(--sans);font-size:var(--fs-ui);font-weight:600}

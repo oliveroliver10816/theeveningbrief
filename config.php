@@ -207,6 +207,11 @@ return [
 
         // Seconds to wait on any one publisher before giving up on it.
         // A slow feed must never hold up the others.
+        // Seconds allowed per run for measuring new images. Measuring is what
+        // stops a 60x60 thumbnail being blown up into a lead photo. 0 disables
+        // it, and then unmeasured images are only ever used in small cards.
+        'image_measure_seconds' => 20,
+
         'timeout_seconds' => 12,
 
         // How many feeds to fetch in a single run. The registry holds ~35;

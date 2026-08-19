@@ -600,8 +600,8 @@ return [
 
     // -------------------------------------------------- shape and non-hardcoding
 
-    'every item has exactly the seven contract keys' => function (): void {
-        $expected = ['guid', 'url', 'title', 'summary', 'image_url', 'published_at', 'author'];
+    'every item has exactly the eight contract keys' => function (): void {
+        $expected = ['guid', 'url', 'title', 'summary', 'body', 'image_url', 'published_at', 'author'];
         $seen     = 0;
 
         foreach (glob(__DIR__ . '/fixtures/*.xml') ?: [] as $path) {
