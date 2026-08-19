@@ -1,5 +1,68 @@
 <?php
+
 declare(strict_types=1);
+
+/**
+ * Read a database out of the environment, if the host put one there.
+ *
+ * Returns null when there is nothing to find, which is the normal case on
+ * shared hosting — the settings in the returned array below are then used.
+ *
+ * Guarded because this file is a `require`d expression, not an include-once:
+ * anything that loads the config twice would otherwise die on a redeclare.
+ */
+if (!function_exists('teb_db_from_env')) {
+    function teb_db_from_env(): ?array
+    {
+        // JawsDB is the usual MySQL add-on on Heroku; ClearDB is the older one.
+        // DATABASE_URL is the generic convention used by most other platforms.
+        foreach (['JAWSDB_URL', 'JAWSDB_MARIA_URL', 'CLEARDB_DATABASE_URL', 'DATABASE_URL', 'MYSQL_URL'] as $key) {
+            $url = getenv($key);
+            if (!is_string($url) || trim($url) === '') {
+                continue;
+            }
+            $u = parse_url(trim($url));
+            if (!is_array($u) || !isset($u['host'])) {
+                continue;
+            }
+
+            $scheme = strtolower((string) ($u['scheme'] ?? 'mysql'));
+            // Postgres is not supported by this build; say so rather than failing
+            // later with an unreadable PDO error.
+            if (str_starts_with($scheme, 'postgres')) {
+                error_log('[teb] ' . $key . ' is a PostgreSQL database; this build supports MySQL or SQLite. Ignoring it.');
+                continue;
+            }
+
+            return [
+                'driver'  => 'mysql',
+                'host'    => (string) $u['host'],
+                'port'    => (int) ($u['port'] ?? 3306),
+                'name'    => ltrim((string) ($u['path'] ?? ''), '/'),
+                'user'    => isset($u['user']) ? rawurldecode((string) $u['user']) : '',
+                'pass'    => isset($u['pass']) ? rawurldecode((string) $u['pass']) : '',
+                'charset' => 'utf8mb4',
+            ];
+        }
+
+        // Discrete variables, the other common convention.
+        $host = getenv('MYSQL_HOST') ?: getenv('DB_HOST');
+        $name = getenv('MYSQL_DATABASE') ?: getenv('DB_NAME');
+        if (is_string($host) && $host !== '' && is_string($name) && $name !== '') {
+            return [
+                'driver'  => 'mysql',
+                'host'    => $host,
+                'port'    => (int) (getenv('MYSQL_PORT') ?: getenv('DB_PORT') ?: 3306),
+                'name'    => $name,
+                'user'    => (string) (getenv('MYSQL_USER') ?: getenv('DB_USER') ?: ''),
+                'pass'    => (string) (getenv('MYSQL_PASSWORD') ?: getenv('DB_PASS') ?: ''),
+                'charset' => 'utf8mb4',
+            ];
+        }
+
+        return null;
+    }
+}
 
 /**
  * ============================================================================
@@ -86,7 +149,13 @@ return [
      | slow disk. Create the database and user in cPanel first, then set
      | 'driver' => 'mysql' and fill in the four lines below it.
      */
-    'db' => [
+    // If the host hands us a database in the environment, USE IT and ignore the
+    // settings below. Heroku, Railway, Render and friends all work this way, and
+    // their local disk is wiped on every restart — so a file-based SQLite
+    // database there would lose every story each time the dyno cycles. Adding a
+    // MySQL add-on sets one of these variables and this picks it up with no edit.
+    // On normal cPanel hosting none of these exist and the values below are used.
+    'db' => teb_db_from_env() ?? [
 
         'driver' => 'sqlite',            // 'sqlite' (no setup) or 'mysql'
 

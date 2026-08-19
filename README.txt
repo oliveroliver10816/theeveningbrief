@@ -21,12 +21,37 @@ everything and tells you, in plain English, what to fix if anything is wrong.
 Delete install.php when you are done.
 
 
+ON HEROKU (OR ANY PLATFORM THAT WIPES THE DISK)
+-----------------------------------------------
+Heroku deletes the dyno's filesystem on every restart, so a file-based database
+there would lose every story roughly once a day. Give it a real database and
+the problem disappears:
+
+    heroku addons:create jawsdb:kitefin -a YOUR-APP-NAME
+
+That is the whole fix. The add-on sets JAWSDB_URL, the site reads it
+automatically on the next boot, and nothing in config.php needs editing.
+Stories then persist across restarts and redeploys, exactly like a normal host.
+
+It also recognises JAWSDB_MARIA_URL, CLEARDB_DATABASE_URL, DATABASE_URL and
+MYSQL_URL, plus discrete MYSQL_HOST / MYSQL_DATABASE / MYSQL_USER /
+MYSQL_PASSWORD variables. PostgreSQL is not supported by this build; if
+DATABASE_URL points at Postgres it is ignored and logged, not silently broken.
+
+Deploying by ZIP rather than git? Use theeveningbrief-heroku.zip — it is flat
+and carries composer.json, composer.lock, Procfile and apache.conf. The plain
+ZIP has a wrapper folder that hides those from the buildpack.
+
+
 IT WORKS WITH NO DATABASE SETUP
 -------------------------------
 Out of the box it stores everything in a single SQLite file it creates itself
 in data/. There is nothing to configure and no database to create.
 
-If you would rather use MySQL, open config.php and change:
+If the host supplies a database in the environment (see the Heroku section
+above) that always wins and you can ignore this.
+
+To point it at MySQL yourself, open config.php and change:
 
     'driver' => 'sqlite',        ->   'driver' => 'mysql',
 
