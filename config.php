@@ -220,7 +220,7 @@ return [
 
         // Delete stories older than this many days. 30 days of archive keeps
         // the database small and the site fast on shared hosting.
-        'retention_days' => 30,
+        'retention_days' => 2,
     ],
 
     /* --------------------------------------------------------------- compose

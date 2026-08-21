@@ -223,7 +223,7 @@ return [
 
         assertTrue($c['ingest']['auto_on_empty']);
         assertSame(20, $c['ingest']['stale_after_minutes']);
-        assertSame(30, $c['ingest']['retention_days']);
+        assertSame(2, $c['ingest']['retention_days']);
     },
 
     'Config::get reads dotted paths and honours the default' => function (): void {

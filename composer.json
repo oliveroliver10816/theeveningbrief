@@ -1,6 +1,6 @@
 {
     "name": "teb/the-evening-brief",
-    "description": "The Evening Brief — a self-updating news site",
+    "description": "The Evening Brief \u2014 a self-updating news site",
     "type": "project",
     "license": "proprietary",
     "require": {
@@ -10,6 +10,7 @@
         "ext-curl": "*",
         "ext-mbstring": "*",
         "ext-simplexml": "*",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-pdo_mysql": "*"
     }
 }

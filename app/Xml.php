@@ -421,7 +421,10 @@ final class Xml
             }
         }
 
-        return mb_substr($best, 0, 20000);
+        // Capped: a news database on a small plan cannot carry 20 KB a row.
+        // 6 KB is roughly a 1,000-word article, which is longer than any
+        // wire feed supplies and enough of a recipe to be a real page.
+        return mb_substr($best, 0, 6000);
     }
 
     /** @param array<string,string> $ns */

@@ -88,8 +88,24 @@ final class App
         }
         $cfg = self::config();
         $pdo = Db::connect(is_array($cfg['db'] ?? null) ? $cfg['db'] : []);
-        Db::migrate($pdo);
-        Db::upsertSources($pdo, Feeds::all());
+
+        // Migration and the source refresh are WRITES. A read-only database —
+        // a free plan that has hit its size cap and had INSERT revoked, a
+        // failover, a full disk — must degrade to serving what is already
+        // there, not take the whole site down with a 503. This exact failure
+        // put the site off the air: JawsDB revoked INSERT at its 5 MB cap and
+        // upsertSources() threw on every single request, including reads.
+        try {
+            Db::migrate($pdo);
+        } catch (Throwable $e) {
+            error_log('[teb] migrate skipped (database not writable): ' . $e->getMessage());
+        }
+        try {
+            Db::upsertSources($pdo, Feeds::all());
+        } catch (Throwable $e) {
+            error_log('[teb] source refresh skipped (database not writable): ' . $e->getMessage());
+        }
+
         self::$pdo = $pdo;
         return $pdo;
     }
