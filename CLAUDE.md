@@ -10,12 +10,15 @@ fetching every 10 minutes, 34/34 feeds green, 0 parked. Heroku app `the-evening-
 DB = **JawsDB Kitefin, free**. Schedule = **CF Worker `evening-brief-scheduler`, cron `*/10`**
 (Osanix acct) — Heroku Scheduler was rejected because it can ONLY be configured by clicking its
 dashboard, and Bob does not run commands or click panels. Deployment facts + ingest token:
-`/root/.config/theeveningbrief/deployment.json` (600).
+`/root/.config/theeveningbrief/deployment.json` (600); the account's GitHub + Heroku keys are
+also at `/root/.config/newsroom/credentials.json` (600), shared with the newsroom-2 sites.
 
 **Status: v1.3 BUILT, TESTED, DEPLOYED 2026-08-19.** 324 tests pass. Nothing bought, $0 spent.
 📦 **ZIP:** github.com/oliveroliver10816/theeveningbrief/releases/download/v1.0/theeveningbrief.zip
-(169,736 bytes, md5 `bec750c8937a7b400f4a9e8e9c3d1e40`, download re-verified). Source repo
-oliveroliver10816/theeveningbrief. 12,134 lines of PHP across 12 modules + router + front controller.
+(169,736 bytes, md5 `bec750c8937a7b400f4a9e8e9c3d1e40`, download re-verified). Source repo is now
+**emilyparker19814014/the-evening-brief** (see the 2026-08-31 section at the end);
+oliveroliver10816/theeveningbrief is kept as the `oliver-backup` remote and holds the same commit.
+12,134 lines of PHP across 12 modules + router + front controller.
 
 **Proven, not asserted** — every route curled on a CLEAN UNZIP with an empty database:
 all 200s, 404 only for a bad path. First request self-seeds (7.2s, fetches 14 feeds across all
@@ -226,3 +229,30 @@ relative placeholder URL — the placeholder rendered nowhere until that was spe
 ⚠ `src/design.css` is the designer's file; `assets/css/site.css` is that file **plus** a marked
 `RENDERER EXTENSION` block. Copying the extension back into design.css broke the integrity test.
 Tests: **336 pass, 0 fail.**
+
+
+## Repo moved to the Heroku identity — 2026-08-31 (Bob's call)
+
+Bob: *"use emilyparrker account for the repo because its better to use the same email for both
+heroku app link and repo for files hosting."*
+
+**`origin` is now `emilyparker19814014/the-evening-brief`** (private) — the same identity that
+owns the Heroku app, so one login covers the files and the app. The old
+`oliveroliver10816/theeveningbrief` remote is **kept** as `oliver-backup` and both were pushed,
+so they hold the same commit. Nothing was deleted.
+
+⚠ **The two repos had UNRELATED histories.** The `emilyparker` one was made by Gitku's own
+"new site" flow (`Initial commit` → `Upload 23 files` → `Upload 25 files`, HEAD `b8b72cc`) and
+was **26 files, missing `apache.conf` and `composer.lock`** — i.e. it could not have produced a
+working build. It was NOT force-pushed over. Instead `git merge -s ours --allow-unrelated-histories`
+put our tree on top with their history as a second parent, and their `README.md` and
+`data/.gitkeep` were restored afterwards, so the repo is now 86 files and nothing was lost.
+Merge commit `c88c138`, HEAD `20b0644`.
+
+Wired into **Gitku** (`ail.com.de/deploy`): `buildpack='php'` written after reading the repo's
+real tree; the tarball fetch a build performs was tested and returns 200 with every
+build-critical file at the root.
+
+⚠ `apps.built_sha` still reads `b8b72cc` — honest, not a bug: the live dyno was deployed by
+direct tarball, not from the repo, so the panel will show a rebuild as available. The live site
+was verified unchanged throughout (`/healthz` ok, ingest running, stylesheet byte-identical).
